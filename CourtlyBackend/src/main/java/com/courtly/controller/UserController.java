@@ -2,6 +2,7 @@ package com.courtly.controller;
 
 import com.courtly.entity.User;
 import com.courtly.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -49,21 +50,23 @@ public class UserController {
         return ResponseEntity.ok(userRepository.searchByNameOrUsername(q));
     }
 
+    @Transactional
     @PostMapping("/{id}/follow")
     public ResponseEntity<Void> follow(@PathVariable String id,
                                        @AuthenticationPrincipal User current) {
+        User me = userRepository.findById(current.getId()).orElseThrow();
         User target = userRepository.findById(id).orElseThrow();
-        current.getFollowing().add(target);
-        userRepository.save(current);
+        me.getFollowing().add(target);
         return ResponseEntity.ok().build();
     }
 
+    @Transactional
     @DeleteMapping("/{id}/follow")
     public ResponseEntity<Void> unfollow(@PathVariable String id,
                                          @AuthenticationPrincipal User current) {
+        User me = userRepository.findById(current.getId()).orElseThrow();
         User target = userRepository.findById(id).orElseThrow();
-        current.getFollowing().remove(target);
-        userRepository.save(current);
+        me.getFollowing().remove(target);
         return ResponseEntity.ok().build();
     }
 }

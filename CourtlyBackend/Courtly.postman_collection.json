@@ -1,0 +1,470 @@
+{
+  "info": {
+    "name": "Courtly API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nicolas Perales\",\n  \"username\": \"nperales0\",\n  \"email\": \"n3xventure@gmail.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "pm.collectionVariables.set('token', res.token);",
+                  "pm.collectionVariables.set('userId', res.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nperales0\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/me"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nicolas Perales\",\n  \"bio\": \"Jugador de padel nivel intermedio\",\n  \"location\": \"Monterrey, MX\",\n  \"available\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/users/search?q=nicolas",
+              "query": [{ "key": "q", "value": "nicolas" }]
+            }
+          }
+        },
+        {
+          "name": "Follow User",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/users/OTRO-USER-ID/follow"
+          }
+        },
+        {
+          "name": "Unfollow User",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/users/OTRO-USER-ID/follow"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Courts",
+      "item": [
+        {
+          "name": "Get All Courts",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/courts"
+          }
+        },
+        {
+          "name": "Get Court by ID",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/courts/COURT-ID"
+          }
+        },
+        {
+          "name": "Get Matches by Court",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/courts/COURT-ID/matches"
+          }
+        },
+        {
+          "name": "Search Courts",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/courts/search?q=padel",
+              "query": [{ "key": "q", "value": "padel" }]
+            }
+          }
+        },
+        {
+          "name": "Create Court",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/courts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Club Padel Norte\",\n  \"address\": \"Av. Constitución 123, Monterrey\",\n  \"latitude\": 25.6866,\n  \"longitude\": -100.3161,\n  \"surface\": \"Césped artificial\",\n  \"totalCourts\": 4\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matches",
+      "item": [
+        {
+          "name": "Get All Matches",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/matches"
+          }
+        },
+        {
+          "name": "Get Matches by Level",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/matches?level=INTERMEDIO",
+              "query": [{ "key": "level", "value": "INTERMEDIO" }]
+            }
+          }
+        },
+        {
+          "name": "Get Matches by Court",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/matches?courtId=COURT-ID",
+              "query": [{ "key": "courtId", "value": "COURT-ID" }]
+            }
+          }
+        },
+        {
+          "name": "Get Match by ID",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/matches/MATCH-ID"
+          }
+        },
+        {
+          "name": "Create Match",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/matches",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"COURT-ID\",\n  \"date\": \"2026-05-01\",\n  \"time\": \"10:00:00\",\n  \"level\": \"INTERMEDIO\",\n  \"totalSpots\": 4,\n  \"description\": \"Partido amistoso\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Join Match",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/matches/MATCH-ID/join"
+          }
+        },
+        {
+          "name": "Leave Match",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/matches/MATCH-ID/leave"
+          }
+        },
+        {
+          "name": "Delete Match",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/matches/MATCH-ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Get Feed",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/posts?page=0&size=20",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/posts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Busco compañero para partido\",\n  \"description\": \"Nivel intermedio, zona norte\",\n  \"location\": \"Monterrey\",\n  \"level\": \"INTERMEDIO\",\n  \"playersNeeded\": 2,\n  \"date\": \"2026-05-01\",\n  \"time\": \"18:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Like Post",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/posts/POST-ID/like"
+          }
+        },
+        {
+          "name": "Unlike Post",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/posts/POST-ID/like"
+          }
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/posts/POST-ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invitations",
+      "item": [
+        {
+          "name": "Get My Pending Invitations",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/invitations"
+          }
+        },
+        {
+          "name": "Send Invitation",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invitations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toUserId\": \"OTRO-USER-ID\",\n  \"courtId\": \"COURT-ID\",\n  \"date\": \"2026-05-01\",\n  \"time\": \"10:00:00\",\n  \"message\": \"Juguemos un partido!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Accept Invitation",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/invitations/INVITATION-ID/accept"
+          }
+        },
+        {
+          "name": "Reject Invitation",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/invitations/INVITATION-ID/reject"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Challenges",
+      "item": [
+        {
+          "name": "Get My Challenges",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/challenges"
+          }
+        },
+        {
+          "name": "Create Challenge",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/challenges",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengedUserId\": \"OTRO-USER-ID\",\n  \"description\": \"Primer set al mejor de 3\",\n  \"deadline\": \"2026-05-10\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Accept Challenge",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/challenges/CHALLENGE-ID/accept"
+          }
+        },
+        {
+          "name": "Update Score",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/challenges/CHALLENGE-ID/score",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": \"6-3\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clubs",
+      "item": [
+        {
+          "name": "Get All Clubs",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/clubs"
+          }
+        },
+        {
+          "name": "Get Club by ID",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/clubs/CLUB-ID"
+          }
+        },
+        {
+          "name": "Create Club",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clubs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Club Padel Norte\",\n  \"description\": \"Club para jugadores del norte\",\n  \"location\": \"Monterrey\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Club Members",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/clubs/CLUB-ID/members"
+          }
+        },
+        {
+          "name": "Join Club",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/clubs/CLUB-ID/join"
+          }
+        },
+        {
+          "name": "Leave Club",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/clubs/CLUB-ID/leave"
+          }
+        }
+      ]
+    }
+  ]
+}

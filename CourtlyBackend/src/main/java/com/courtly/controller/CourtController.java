@@ -1,9 +1,11 @@
 package com.courtly.controller;
 
+import com.courtly.dto.request.CreateCourtRequest;
 import com.courtly.entity.Court;
 import com.courtly.entity.Match;
 import com.courtly.repository.CourtRepository;
 import com.courtly.repository.MatchRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,5 +40,18 @@ public class CourtController {
     @GetMapping("/search")
     public List<Court> search(@RequestParam String q) {
         return courtRepository.searchByNameOrAddress(q);
+    }
+
+    @PostMapping
+    public ResponseEntity<Court> create(@Valid @RequestBody CreateCourtRequest req) {
+        Court court = Court.builder()
+                .name(req.getName())
+                .address(req.getAddress())
+                .latitude(req.getLatitude())
+                .longitude(req.getLongitude())
+                .surface(req.getSurface())
+                .totalCourts(req.getTotalCourts())
+                .build();
+        return ResponseEntity.ok(courtRepository.save(court));
     }
 }
