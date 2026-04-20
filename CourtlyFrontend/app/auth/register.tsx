@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('');
     if (!name.trim()) { setError('Ingresa tu nombre.'); return; }
+    if (!username.trim()) { setError('Ingresa tu nombre de usuario.'); return; }
     if (!email.trim()) { setError('Ingresa tu correo electrónico.'); return; }
     if (!/\S+@\S+\.\S+/.test(email)) { setError('El correo electrónico no es válido.'); return; }
     if (!password) { setError('Ingresa una contraseña.'); return; }
@@ -37,7 +39,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await register(name, email, password);
+      await register(name, username, email, password);
     } catch {
       setError('Error al crear la cuenta. Intenta de nuevo.');
     } finally {
@@ -76,6 +78,15 @@ export default function RegisterScreen() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nombre de usuario"
+              placeholderTextColor={colors.textMuted}
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
             <TextInput
               style={styles.input}

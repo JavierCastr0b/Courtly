@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Post } from '../data/mockData';
+import { Post } from '../types';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
@@ -24,7 +24,7 @@ export function PostCard({ post, onJoin }: PostCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Avatar name={post.user.name} initials={post.user.initials} size={42} available={post.user.available} />
+        <Avatar name={post.user.name} size={42} available={post.user.available} />
         <View style={styles.headerInfo}>
           <Text style={styles.userName}>{post.user.name}</Text>
           <View style={styles.metaRow}>
@@ -34,7 +34,7 @@ export function PostCard({ post, onJoin }: PostCardProps) {
             <Text style={styles.metaText}>{post.createdAt}</Text>
           </View>
         </View>
-        <Tag label={post.level} variant="level" level={post.level} />
+        {post.level ? <Tag label={post.level} variant="level" /> : null}
       </View>
 
       <Text style={styles.title}>{post.title}</Text>
@@ -44,16 +44,20 @@ export function PostCard({ post, onJoin }: PostCardProps) {
       ) : null}
 
       <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="time-outline" size={14} color={colors.primary} />
-          <Text style={styles.infoText}>{post.date} · {post.time}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="people-outline" size={14} color={colors.ctaHighlight} />
-          <Text style={[styles.infoText, { color: colors.ctaHighlight }]}>
-            {post.playersNeeded} {post.playersNeeded === 1 ? 'jugador' : 'jugadores'} necesarios
-          </Text>
-        </View>
+        {post.date && post.time ? (
+          <View style={styles.infoItem}>
+            <Ionicons name="time-outline" size={14} color={colors.primary} />
+            <Text style={styles.infoText}>{post.date} · {post.time}</Text>
+          </View>
+        ) : null}
+        {post.playersNeeded > 0 ? (
+          <View style={styles.infoItem}>
+            <Ionicons name="people-outline" size={14} color={colors.ctaHighlight} />
+            <Text style={[styles.infoText, { color: colors.ctaHighlight }]}>
+              {post.playersNeeded} {post.playersNeeded === 1 ? 'jugador' : 'jugadores'} necesarios
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.footer}>

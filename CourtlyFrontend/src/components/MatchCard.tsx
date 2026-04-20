@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Match } from '../data/mockData';
+import { Match } from '../types';
 import { colors, levelColor } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
@@ -51,7 +51,7 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Avatar name={match.organizer.name} initials={match.organizer.initials} size={40} />
+        <Avatar name={match.organizer.name} size={40} />
         <View style={styles.headerInfo}>
           <Text style={styles.organizerName}>{match.organizer.name}</Text>
           <Text style={styles.courtName} numberOfLines={1}>{match.court.name}</Text>

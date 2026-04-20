@@ -20,15 +20,20 @@ function getColor(name: string) {
   return PALETTE[Math.abs(hash) % PALETTE.length];
 }
 
+function computeInitials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
 interface AvatarProps {
   name: string;
-  initials: string;
+  initials?: string;
   size?: number;
   available?: boolean;
   style?: ViewStyle;
 }
 
 export function Avatar({ name, initials, size = 44, available = false, style }: AvatarProps) {
+  initials = initials ?? computeInitials(name);
   const bg = getColor(name);
   const fontSize = size * 0.38;
 

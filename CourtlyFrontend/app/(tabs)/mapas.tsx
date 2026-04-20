@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   ScrollView,
   Animated,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
-import { mockCourts, mockMatches, Court, Match } from '@/src/data/mockData';
+import { Court, Match } from '@/src/types';
+import { courtsApi } from '@/src/api/courts';
 import { Button } from '@/src/components/Button';
 import { Tag } from '@/src/components/Tag';
 
@@ -21,7 +21,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BOTTOM_SHEET_H = SCREEN_HEIGHT * 0.44;
 
 const FILTERS = ['Nivel', 'Hora', 'Distancia'];
-const LEVEL_OPTS = ['Todos', 'Principiante', 'Intermedio', 'Avanzado'];
+const LEVEL_OPTS = ['Todos', 'PRINCIPIANTE', 'INTERMEDIO', 'AVANZADO'];
+const LEVEL_LABELS: Record<string, string> = {
+  PRINCIPIANTE: 'Principiante',
+  INTERMEDIO: 'Intermedio',
+  AVANZADO: 'Avanzado',
+};
 
 const INITIAL_REGION = {
   latitude: -12.105,
@@ -31,46 +36,48 @@ const INITIAL_REGION = {
 };
 
 export default function MapasScreen() {
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [courtMatches, setCourtMatches] = useState<Record<string, Match[]>>({});
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState('Todos');
   const sheetY = useRef(new Animated.Value(BOTTOM_SHEET_H)).current;
   const isSheetOpen = useRef(false);
 
+  useEffect(() => {
+    courtsApi.getAll().then(setCourts).catch(() => {});
+  }, []);
+
+  const loadMatches = (court: Court) => {
+    if (!courtMatches[court.id]) {
+      courtsApi.getMatches(court.id)
+        .then(m => setCourtMatches(prev => ({ ...prev, [court.id]: m })))
+        .catch(() => {});
+    }
+  };
+
   const openSheet = (court: Court) => {
     setSelectedCourt(court);
-    Animated.spring(sheetY, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
+    loadMatches(court);
+    Animated.spring(sheetY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     isSheetOpen.current = true;
   };
 
   const closeSheet = () => {
-    Animated.timing(sheetY, {
-      toValue: BOTTOM_SHEET_H,
-      duration: 260,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.timing(sheetY, { toValue: BOTTOM_SHEET_H, duration: 260, useNativeDriver: true }).start(() => {
       setSelectedCourt(null);
       isSheetOpen.current = false;
     });
   };
 
-  const courtMatches = (courtId: string): Match[] =>
-    mockMatches.filter((m) => m.court.id === courtId);
-
   const filteredMatches = (courtId: string): Match[] => {
-    let ms = courtMatches(courtId);
+    let ms = courtMatches[courtId] ?? [];
     if (levelFilter !== 'Todos') ms = ms.filter((m) => m.level === levelFilter);
     return ms;
   };
 
   return (
     <View style={styles.root}>
-      {/* ─── Map ────────────────────────────────────── */}
       <MapView
         style={StyleSheet.absoluteFillObject}
         provider={PROVIDER_DEFAULT}
@@ -79,10 +86,10 @@ export default function MapasScreen() {
         showsMyLocationButton={false}
         userInterfaceStyle="dark"
       >
-        {mockCourts.map((court) => (
+        {courts.map((court) => (
           <Marker
             key={court.id}
-            coordinate={court.coordinates}
+            coordinate={{ latitude: court.latitude, longitude: court.longitude }}
             onPress={() => openSheet(court)}
           >
             <View style={[
@@ -90,15 +97,13 @@ export default function MapasScreen() {
               selectedCourt?.id === court.id && styles.markerSelected,
             ]}>
               <Ionicons name="tennisball" size={14} color="#fff" />
-              <Text style={styles.markerCount}>{court.activeMatches}</Text>
+              <Text style={styles.markerCount}>{court.totalCourts}</Text>
             </View>
           </Marker>
         ))}
       </MapView>
 
-      {/* ─── Safe area top overlay ──────────────────── */}
       <SafeAreaView edges={['top']} style={styles.topOverlay} pointerEvents="box-none">
-        {/* Search bar */}
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={colors.textSecondary} />
           <Text style={styles.searchText}>Buscar ubicaciones</Text>
@@ -108,15 +113,12 @@ export default function MapasScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Filter row */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}
         >
-          <TouchableOpacity
-            style={[styles.filterChip, styles.filterChipPrimary]}
-          >
+          <TouchableOpacity style={[styles.filterChip, styles.filterChipPrimary]}>
             <Ionicons name="tennisball-outline" size={13} color={colors.primary} />
             <Text style={styles.filterChipPrimaryText}>Canchas</Text>
             <Ionicons name="chevron-down" size={13} color={colors.primary} />
@@ -127,19 +129,12 @@ export default function MapasScreen() {
               onPress={() => setActiveFilter(activeFilter === f ? null : f)}
               style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
             >
-              <Text style={[styles.filterChipText, activeFilter === f && styles.filterChipTextActive]}>
-                {f}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={12}
-                color={activeFilter === f ? colors.primary : colors.textSecondary}
-              />
+              <Text style={[styles.filterChipText, activeFilter === f && styles.filterChipTextActive]}>{f}</Text>
+              <Ionicons name="chevron-down" size={12} color={activeFilter === f ? colors.primary : colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Level filter dropdown */}
         {activeFilter === 'Nivel' && (
           <View style={styles.dropdown}>
             {LEVEL_OPTS.map((l) => (
@@ -149,7 +144,7 @@ export default function MapasScreen() {
                 style={[styles.dropdownItem, levelFilter === l && styles.dropdownItemActive]}
               >
                 <Text style={[styles.dropdownText, levelFilter === l && styles.dropdownTextActive]}>
-                  {l}
+                  {l === 'Todos' ? 'Todos' : LEVEL_LABELS[l]}
                 </Text>
                 {levelFilter === l && <Ionicons name="checkmark" size={14} color={colors.primary} />}
               </TouchableOpacity>
@@ -158,23 +153,15 @@ export default function MapasScreen() {
         )}
       </SafeAreaView>
 
-      {/* ─── Map controls ───────────────────────────── */}
       <View style={styles.mapControls}>
-        <TouchableOpacity style={styles.mapControlBtn}>
-          <Text style={styles.mapControlLayers}>5</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.mapControlBtn}>
           <Text style={styles.mapControlText}>3D</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.mapControlBtn}>
           <Ionicons name="locate" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.mapControlBtn}>
-          <Ionicons name="pencil-outline" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
       </View>
 
-      {/* ─── Floating CTA ───────────────────────────── */}
       <View style={styles.floatingCTA}>
         <TouchableOpacity style={styles.ctaButton}>
           <Ionicons name="add" size={18} color="#fff" />
@@ -182,10 +169,7 @@ export default function MapasScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ─── Bottom Sheet ───────────────────────────── */}
-      <Animated.View
-        style={[styles.bottomSheet, { transform: [{ translateY: sheetY }] }]}
-      >
+      <Animated.View style={[styles.bottomSheet, { transform: [{ translateY: sheetY }] }]}>
         <View style={styles.sheetHandle} />
 
         {selectedCourt && (
@@ -195,10 +179,10 @@ export default function MapasScreen() {
                 <Text style={styles.sheetCourtName}>{selectedCourt.name}</Text>
                 <View style={styles.sheetMeta}>
                   <Ionicons name="location-outline" size={13} color={colors.textSecondary} />
-                  <Text style={styles.sheetMetaText}>{selectedCourt.distance} de ti</Text>
+                  <Text style={styles.sheetMetaText}>{selectedCourt.address}</Text>
                   <Text style={styles.sheetDot}>·</Text>
                   <Ionicons name="tennisball-outline" size={13} color={colors.textSecondary} />
-                  <Text style={styles.sheetMetaText}>{selectedCourt.courts} canchas</Text>
+                  <Text style={styles.sheetMetaText}>{selectedCourt.totalCourts} canchas</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={closeSheet} style={styles.sheetCloseBtn}>
@@ -206,23 +190,14 @@ export default function MapasScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Surface + active matches */}
             <View style={styles.sheetTagRow}>
               <View style={styles.sheetTag}>
                 <Text style={styles.sheetTagText}>{selectedCourt.surface}</Text>
               </View>
-              <View style={[styles.sheetTag, { backgroundColor: colors.primary + '22' }]}>
-                <Text style={[styles.sheetTagText, { color: colors.primary }]}>
-                  {selectedCourt.activeMatches} partidos activos
-                </Text>
-              </View>
             </View>
 
             <Text style={styles.sheetSectionLabel}>Partidos disponibles</Text>
-            <ScrollView
-              style={styles.sheetMatchList}
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.sheetMatchList} showsVerticalScrollIndicator={false}>
               {filteredMatches(selectedCourt.id).length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyText}>No hay partidos con este filtro.</Text>
@@ -232,7 +207,7 @@ export default function MapasScreen() {
                   <View key={match.id} style={styles.sheetMatchCard}>
                     <View style={styles.sheetMatchLeft}>
                       <Text style={styles.sheetMatchTime}>{match.date} · {match.time}</Text>
-                      <Tag label={match.level} variant="level" level={match.level} style={{ marginTop: 4 }} />
+                      <Tag label={match.level} variant="level" style={{ marginTop: 4 }} />
                     </View>
                     <View style={styles.sheetMatchRight}>
                       <View style={styles.spotsRow}>
@@ -241,20 +216,11 @@ export default function MapasScreen() {
                           size={13}
                           color={match.spotsLeft === 1 ? colors.ctaHighlight : colors.textSecondary}
                         />
-                        <Text style={[
-                          styles.spotsText,
-                          match.spotsLeft === 1 && { color: colors.ctaHighlight },
-                        ]}>
+                        <Text style={[styles.spotsText, match.spotsLeft === 1 && { color: colors.ctaHighlight }]}>
                           {match.spotsLeft} {match.spotsLeft === 1 ? 'lugar' : 'lugares'}
                         </Text>
                       </View>
-                      <Button
-                        label="Unirme"
-                        variant="primary"
-                        size="sm"
-                        onPress={() => {}}
-                        style={{ marginTop: 8 }}
-                      />
+                      <Button label="Unirme" variant="primary" size="sm" onPress={() => {}} style={{ marginTop: 8 }} />
                     </View>
                   </View>
                 ))
@@ -268,17 +234,8 @@ export default function MapasScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  topOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
+  root: { flex: 1, backgroundColor: colors.background },
+  topOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -292,28 +249,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 8,
   },
-  searchText: {
-    flex: 1,
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  savedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
-    paddingLeft: 10,
-  },
-  savedText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  filterRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
+  searchText: { flex: 1, color: colors.textMuted, fontSize: 14 },
+  savedBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 10 },
+  savedText: { color: colors.textSecondary, fontSize: 13 },
+  filterRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -325,28 +264,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterChipPrimary: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '18',
-  },
-  filterChipPrimaryText: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '15',
-  },
-  filterChipText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
+  filterChipPrimary: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+  filterChipPrimaryText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  filterChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+  filterChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
+  filterChipTextActive: { color: colors.primary, fontWeight: '600' },
   dropdown: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
@@ -364,24 +286,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  dropdownItemActive: {
-    backgroundColor: colors.primary + '12',
-  },
-  dropdownText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-  dropdownTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  mapControls: {
-    position: 'absolute',
-    right: 14,
-    bottom: BOTTOM_SHEET_H * 0.15 + 80,
-    gap: 8,
-    zIndex: 5,
-  },
+  dropdownItemActive: { backgroundColor: colors.primary + '12' },
+  dropdownText: { color: colors.textSecondary, fontSize: 14 },
+  dropdownTextActive: { color: colors.primary, fontWeight: '600' },
+  mapControls: { position: 'absolute', right: 14, bottom: BOTTOM_SHEET_H * 0.15 + 80, gap: 8, zIndex: 5 },
   mapControlBtn: {
     width: 40,
     height: 40,
@@ -392,22 +300,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  mapControlText: {
-    color: colors.textPrimary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  mapControlLayers: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  floatingCTA: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: 100,
-    zIndex: 10,
-  },
+  mapControlText: { color: colors.textPrimary, fontSize: 12, fontWeight: '700' },
+  floatingCTA: { position: 'absolute', alignSelf: 'center', bottom: 100, zIndex: 10 },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -422,12 +316,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  ctaButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  // Marker
+  ctaButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   markerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,16 +333,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  markerSelected: {
-    backgroundColor: colors.ctaHighlight,
-    transform: [{ scale: 1.1 }],
-  },
-  markerCount: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  // Bottom sheet
+  markerSelected: { backgroundColor: colors.ctaHighlight, transform: [{ scale: 1.1 }] },
+  markerCount: { color: '#fff', fontSize: 12, fontWeight: '700' },
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
@@ -483,45 +364,14 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
   },
-  sheetCourtName: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  sheetMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  sheetMetaText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  sheetDot: {
-    color: colors.textMuted,
-  },
-  sheetCloseBtn: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  sheetTagRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 18,
-    marginBottom: 14,
-  },
-  sheetTag: {
-    backgroundColor: colors.secondary,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  sheetTagText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  sheetCourtName: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+  sheetMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  sheetMetaText: { color: colors.textSecondary, fontSize: 12 },
+  sheetDot: { color: colors.textMuted },
+  sheetCloseBtn: { padding: 4, marginLeft: 8 },
+  sheetTagRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, marginBottom: 14 },
+  sheetTag: { backgroundColor: colors.secondary, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  sheetTagText: { color: colors.textSecondary, fontSize: 12, fontWeight: '500' },
   sheetSectionLabel: {
     color: colors.textSecondary,
     fontSize: 12,
@@ -531,10 +381,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 8,
   },
-  sheetMatchList: {
-    flex: 1,
-    paddingHorizontal: 18,
-  },
+  sheetMatchList: { flex: 1, paddingHorizontal: 18 },
   sheetMatchCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -548,27 +395,9 @@ const styles = StyleSheet.create({
   },
   sheetMatchLeft: { flex: 1 },
   sheetMatchRight: { alignItems: 'flex-end' },
-  sheetMatchTime: {
-    color: colors.textPrimary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  spotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  spotsText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
+  sheetMatchTime: { color: colors.textPrimary, fontWeight: '600', fontSize: 14 },
+  spotsRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  spotsText: { color: colors.textSecondary, fontSize: 12, fontWeight: '500' },
+  emptyState: { alignItems: 'center', paddingVertical: 24 },
+  emptyText: { color: colors.textMuted, fontSize: 14 },
 });

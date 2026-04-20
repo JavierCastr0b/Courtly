@@ -19,21 +19,20 @@ import { colors } from '@/src/theme/colors';
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
     setError('');
-    if (!email.trim()) { setError('Ingresa tu correo electrónico.'); return; }
-    if (!/\S+@\S+\.\S+/.test(email)) { setError('El correo electrónico no es válido.'); return; }
+    if (!username.trim()) { setError('Ingresa tu nombre de usuario.'); return; }
     if (!password) { setError('Ingresa tu contraseña.'); return; }
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
 
     setLoading(true);
     try {
-      await login(email, password);
+      await login(username, password);
     } catch {
       setError('Error al iniciar sesión. Intenta de nuevo.');
     } finally {
@@ -62,12 +61,11 @@ export default function LoginScreen() {
           <View style={styles.form}>
             <TextInput
               style={styles.input}
-              placeholder="Correo electrónico"
+              placeholder="Nombre de usuario"
               placeholderTextColor={colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
+              value={username}
+              onChangeText={setUsername}
               autoCapitalize="none"
-              keyboardType="email-address"
               autoCorrect={false}
             />
             <TextInput

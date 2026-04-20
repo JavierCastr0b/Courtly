@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,19 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { useAuth } from '@/src/context/AuthContext';
-import { currentUser, mockPosts } from '@/src/data/mockData';
+import { postsApi } from '@/src/api/posts';
+import { Post } from '@/src/types';
 import { Avatar } from '@/src/components/Avatar';
 import { Tag } from '@/src/components/Tag';
 import { Button } from '@/src/components/Button';
 import { PostCard } from '@/src/components/PostCard';
 
-// Simple activity heatmap data for March 2026
 const WEEKS = 5;
 const DAYS = 7;
 const ACTIVITY = [
@@ -31,24 +32,34 @@ const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 function ActivityCell({ intensity }: { intensity: number }) {
   const bgMap = ['#1C2028', '#0D3361', '#1565C0', '#1E90FF'];
-  return (
-    <View style={[styles.activityCell, { backgroundColor: bgMap[intensity] }]} />
-  );
+  return <View style={[styles.activityCell, { backgroundColor: bgMap[intensity] }]} />;
 }
 
 const PROFILE_TABS = ['Progreso', 'Actividad'] as const;
 type ProfileTab = typeof PROFILE_TABS[number];
 
 export default function PerfilScreen() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('Progreso');
-  const userPosts = mockPosts.filter((p) => p.user.id === '1').slice(0, 2);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
-  const winRate = Math.round((currentUser.wins / currentUser.matchesPlayed) * 100);
+  useEffect(() => {
+    setLoadingPosts(true);
+    postsApi.getFeed()
+      .then(p => setPosts(p.content.slice(0, 5)))
+      .catch(() => {})
+      .finally(() => setLoadingPosts(false));
+  }, []);
+
+  if (!user) return null;
+
+  const winRate = user.matchesPlayed > 0
+    ? Math.round((user.wins / user.matchesPlayed) * 100)
+    : 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      {/* ─── Header ─────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tú</Text>
         <TouchableOpacity
@@ -67,16 +78,17 @@ export default function PerfilScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Profile section ────────────────────────── */}
         <View style={styles.profileSection}>
-          <Avatar name={currentUser.name} initials={currentUser.initials} size={72} available />
+          <Avatar name={user.name} size={72} available={user.available} />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{currentUser.name}</Text>
-            <Text style={styles.profileUsername}>@{currentUser.username}</Text>
-            <View style={styles.profileMeta}>
-              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.profileMetaText}>{currentUser.location}</Text>
-            </View>
+            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileUsername}>@{user.username}</Text>
+            {user.location ? (
+              <View style={styles.profileMeta}>
+                <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+                <Text style={styles.profileMetaText}>{user.location}</Text>
+              </View>
+            ) : null}
           </View>
           <Button
             label="Editar perfil"
@@ -86,19 +98,16 @@ export default function PerfilScreen() {
           />
         </View>
 
-        {currentUser.bio && (
-          <Text style={styles.bio}>{currentUser.bio}</Text>
-        )}
+        {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
 
-        {/* ─── Stats ──────────────────────────────────── */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{currentUser.matchesPlayed}</Text>
+            <Text style={styles.statValue}>{user.matchesPlayed}</Text>
             <Text style={styles.statLabel}>Partidos</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{currentUser.wins}</Text>
+            <Text style={styles.statValue}>{user.wins}</Text>
             <Text style={styles.statLabel}>Victorias</Text>
           </View>
           <View style={styles.statDivider} />
@@ -108,12 +117,11 @@ export default function PerfilScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCard}>
-            <Tag label={currentUser.level} variant="level" level={currentUser.level} />
+            <Tag label={user.level} variant="level" style={{ marginBottom: 2 }} />
             <Text style={styles.statLabel}>Nivel</Text>
           </View>
         </View>
 
-        {/* ─── Tabs ───────────────────────────────────── */}
         <View style={styles.tabs}>
           {PROFILE_TABS.map((tab) => (
             <TouchableOpacity
@@ -128,7 +136,6 @@ export default function PerfilScreen() {
 
         {activeTab === 'Progreso' && (
           <>
-            {/* ─── This week ──────────────────────────── */}
             <View style={styles.weekBlock}>
               <View style={styles.weekHeader}>
                 <Text style={styles.weekTitle}>Esta semana</Text>
@@ -149,7 +156,6 @@ export default function PerfilScreen() {
               </View>
             </View>
 
-            {/* ─── Streak ─────────────────────────────── */}
             <View style={styles.streakBlock}>
               <View style={styles.streakInfo}>
                 <Ionicons name="flame" size={28} color={colors.ctaHighlight} />
@@ -167,7 +173,6 @@ export default function PerfilScreen() {
               </View>
             </View>
 
-            {/* ─── Calendar heatmap ───────────────────── */}
             <View style={styles.calendarBlock}>
               <View style={styles.calendarHeader}>
                 <Text style={styles.calendarMonth}>marzo 2026</Text>
@@ -193,7 +198,6 @@ export default function PerfilScreen() {
               </View>
             </View>
 
-            {/* ─── Premium upsell ─────────────────────── */}
             <View style={styles.premiumCard}>
               <Ionicons name="lock-closed" size={20} color={colors.textSecondary} />
               <View style={{ flex: 1 }}>
@@ -208,9 +212,10 @@ export default function PerfilScreen() {
 
         {activeTab === 'Actividad' && (
           <View style={{ marginTop: 16 }}>
-            {mockPosts.slice(0, 3).map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            {loadingPosts
+              ? <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+              : posts.map((post) => <PostCard key={post.id} post={post} />)
+            }
           </View>
         )}
       </ScrollView>
@@ -219,10 +224,7 @@ export default function PerfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  root: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,18 +234,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerTitle: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  headerBtn: {
-    padding: 4,
-  },
+  headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+  headerBtn: { padding: 4 },
   scroll: { flex: 1 },
-  scrollContent: {
-    paddingBottom: 40,
-  },
+  scrollContent: { paddingBottom: 40 },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,36 +246,12 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 14,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  profileUsername: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  profileMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  profileMetaText: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  bio: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    paddingHorizontal: 18,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
+  profileInfo: { flex: 1 },
+  profileName: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  profileUsername: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
+  profileMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  profileMetaText: { color: colors.textMuted, fontSize: 12 },
+  bio: { color: colors.textSecondary, fontSize: 14, paddingHorizontal: 18, marginBottom: 16, lineHeight: 20 },
   statsRow: {
     flexDirection: 'row',
     backgroundColor: colors.cardBg,
@@ -293,26 +263,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 20,
   },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.border,
-  },
-  statValue: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  statLabel: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '500',
-  },
+  statCard: { flex: 1, alignItems: 'center', gap: 6 },
+  statDivider: { width: 1, height: 30, backgroundColor: colors.border },
+  statValue: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  statLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '500' },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -327,17 +281,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: {
-    borderBottomColor: colors.primary,
-  },
-  tabText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: colors.primary,
-  },
+  tabActive: { borderBottomColor: colors.primary },
+  tabText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  tabTextActive: { color: colors.primary },
   weekBlock: {
     marginHorizontal: 18,
     marginTop: 16,
@@ -348,35 +294,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 14,
   },
-  weekHeader: {
-    marginBottom: 12,
-  },
-  weekTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  weekStats: {
-    flexDirection: 'row',
-    gap: 20,
-  },
+  weekHeader: { marginBottom: 12 },
+  weekTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  weekStats: { flexDirection: 'row', gap: 20 },
   weekStat: {},
-  weekStatValue: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  weekStatLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  streakBlock: {
-    marginHorizontal: 18,
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
-  },
+  weekStatValue: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  weekStatLabel: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  streakBlock: { marginHorizontal: 18, flexDirection: 'row', gap: 12, marginBottom: 14 },
   streakInfo: {
     flex: 1,
     flexDirection: 'row',
@@ -388,15 +312,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  streakTitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  streakValue: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  streakTitle: { color: colors.textSecondary, fontSize: 12 },
+  streakValue: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
   calendarBlock: {
     marginHorizontal: 18,
     backgroundColor: colors.cardBg,
@@ -406,50 +323,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 14,
   },
-  calendarHeader: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  calendarMonth: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  dayLabels: {
-    flexDirection: 'row',
-    gap: 4,
-    marginBottom: 6,
-  },
-  dayLabel: {
-    flex: 1,
-    textAlign: 'center',
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  calendarWeek: {
-    flexDirection: 'row',
-    gap: 4,
-    marginBottom: 4,
-  },
-  activityCell: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 4,
-  },
-  calendarLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-    justifyContent: 'flex-end',
-  },
-  calendarLegendText: {
-    color: colors.textMuted,
-    fontSize: 11,
-  },
+  calendarHeader: { marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  calendarMonth: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  dayLabels: { flexDirection: 'row', gap: 4, marginBottom: 6 },
+  dayLabel: { flex: 1, textAlign: 'center', color: colors.textMuted, fontSize: 11, fontWeight: '600' },
+  calendarWeek: { flexDirection: 'row', gap: 4, marginBottom: 4 },
+  activityCell: { flex: 1, aspectRatio: 1, borderRadius: 4 },
+  calendarLegend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' },
+  calendarLegendText: { color: colors.textMuted, fontSize: 11 },
   premiumCard: {
     marginHorizontal: 18,
     backgroundColor: colors.secondary,
@@ -462,15 +343,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 14,
   },
-  premiumTitle: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 15,
-    marginBottom: 4,
-  },
-  premiumSub: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  premiumTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
+  premiumSub: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
 });

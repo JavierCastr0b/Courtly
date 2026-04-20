@@ -39,9 +39,9 @@ public class AuthController {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .build();
 
-        userRepository.save(user);
-        String token = jwtService.generateToken(user);
-        return ResponseEntity.ok(Map.of("token", token, "userId", user.getId()));
+        User saved = userRepository.save(user);
+        String token = jwtService.generateToken(saved);
+        return ResponseEntity.ok(Map.of("token", token, "userId", saved.getId()));
     }
 
     @PostMapping("/login")

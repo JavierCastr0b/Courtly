@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, levelColor, LevelType } from '../theme/colors';
+import { colors, levelColor, levelDisplay, LevelType } from '../theme/colors';
 
 interface TagProps {
   label: string;
   variant?: 'level' | 'default' | 'success' | 'warning' | 'muted';
-  level?: LevelType;
+  level?: string;
   style?: ViewStyle;
 }
 
@@ -13,9 +13,10 @@ export function Tag({ label, variant = 'default', level, style }: TagProps) {
   let bgColor = colors.secondary;
   let textColor = colors.textSecondary;
 
-  if (variant === 'level' && level) {
-    bgColor = levelColor[level] + '22';
-    textColor = levelColor[level];
+  if (variant === 'level') {
+    const key = level ?? label;
+    bgColor = (levelColor[key] ?? colors.primary) + '22';
+    textColor = levelColor[key] ?? colors.primary;
   } else if (variant === 'success') {
     bgColor = colors.success + '22';
     textColor = colors.success;
@@ -27,9 +28,11 @@ export function Tag({ label, variant = 'default', level, style }: TagProps) {
     textColor = colors.textMuted;
   }
 
+  const displayLabel = levelDisplay[label] ?? label;
+
   return (
     <View style={[styles.tag, { backgroundColor: bgColor }, style]}>
-      <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+      <Text style={[styles.label, { color: textColor }]}>{displayLabel}</Text>
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { User } from '../data/mockData';
+import { User } from '../types';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
@@ -17,7 +17,7 @@ export function FriendCard({ user, onInvite, onViewProfile }: FriendCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
-        <Avatar name={user.name} initials={user.initials} size={48} available={user.available} />
+        <Avatar name={user.name} size={48} available={user.available} />
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{user.name}</Text>
@@ -27,10 +27,10 @@ export function FriendCard({ user, onInvite, onViewProfile }: FriendCardProps) {
               </View>
             )}
           </View>
-          <Tag label={user.level} variant="level" level={user.level} style={{ marginTop: 4 }} />
+          <Tag label={user.level} variant="level" style={{ marginTop: 4 }} />
           <View style={styles.lastActive}>
-            <Ionicons name="time-outline" size={12} color={colors.textMuted} />
-            <Text style={styles.lastActiveText}>{user.lastActive}</Text>
+            <Ionicons name="person-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.lastActiveText}>@{user.username}</Text>
           </View>
         </View>
       </View>

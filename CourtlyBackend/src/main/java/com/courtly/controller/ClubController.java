@@ -3,6 +3,7 @@ package com.courtly.controller;
 import com.courtly.entity.Club;
 import com.courtly.entity.User;
 import com.courtly.repository.ClubRepository;
+import com.courtly.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,6 +19,7 @@ import java.util.Set;
 public class ClubController {
 
     private final ClubRepository clubRepository;
+    private final UserRepository userRepository;
 
     @GetMapping
     public List<Club> getAll() {
@@ -39,7 +41,7 @@ public class ClubController {
                 .description(body.get("description"))
                 .location(body.get("location"))
                 .build();
-        club.getMembers().add(user);
+        club.getMembers().add(userRepository.findById(user.getId()).orElseThrow());
         return ResponseEntity.ok(clubRepository.save(club));
     }
 
@@ -54,7 +56,7 @@ public class ClubController {
     public ResponseEntity<Void> join(@PathVariable String id,
                                      @AuthenticationPrincipal User user) {
         Club club = clubRepository.findById(id).orElseThrow();
-        club.getMembers().add(user);
+        club.getMembers().add(userRepository.findById(user.getId()).orElseThrow());
         clubRepository.save(club);
         return ResponseEntity.ok().build();
     }
@@ -63,7 +65,7 @@ public class ClubController {
     public ResponseEntity<Void> leave(@PathVariable String id,
                                       @AuthenticationPrincipal User user) {
         Club club = clubRepository.findById(id).orElseThrow();
-        club.getMembers().remove(user);
+        club.getMembers().remove(userRepository.findById(user.getId()).orElseThrow());
         clubRepository.save(club);
         return ResponseEntity.ok().build();
     }

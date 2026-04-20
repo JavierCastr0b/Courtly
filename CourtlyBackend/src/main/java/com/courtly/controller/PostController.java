@@ -4,6 +4,7 @@ import com.courtly.dto.request.CreatePostRequest;
 import com.courtly.entity.Post;
 import com.courtly.entity.User;
 import com.courtly.repository.PostRepository;
+import com.courtly.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
 
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
     @GetMapping
     public Page<Post> getFeed(@PageableDefault(size = 20) Pageable pageable) {
@@ -55,7 +57,7 @@ public class PostController {
     public ResponseEntity<Void> like(@PathVariable String id,
                                      @AuthenticationPrincipal User user) {
         Post post = postRepository.findById(id).orElseThrow();
-        post.getLikedBy().add(user);
+        post.getLikedBy().add(userRepository.findById(user.getId()).orElseThrow());
         postRepository.save(post);
         return ResponseEntity.ok().build();
     }
@@ -64,7 +66,7 @@ public class PostController {
     public ResponseEntity<Void> unlike(@PathVariable String id,
                                        @AuthenticationPrincipal User user) {
         Post post = postRepository.findById(id).orElseThrow();
-        post.getLikedBy().remove(user);
+        post.getLikedBy().remove(userRepository.findById(user.getId()).orElseThrow());
         postRepository.save(post);
         return ResponseEntity.ok().build();
     }

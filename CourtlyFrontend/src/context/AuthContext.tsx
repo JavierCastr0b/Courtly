@@ -1,45 +1,56 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const AUTH_KEY = '@courtly_auth';
+import { authApi } from '../api/auth';
+import { usersApi } from '../api/users';
+import { getToken, setToken, removeToken } from '../api/client';
+import { User } from '../types';
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (name: string, username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(AUTH_KEY)
-      .then(value => setIsAuthenticated(value === 'true'))
+    getToken()
+      .then(token => {
+        if (token) return usersApi.me();
+        return null;
+      })
+      .then(me => setUser(me))
+      .catch(() => removeToken())
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (_email: string, _password: string) => {
-    await AsyncStorage.setItem(AUTH_KEY, 'true');
-    setIsAuthenticated(true);
+  const login = async (username: string, password: string) => {
+    const { token } = await authApi.login(username, password);
+    await setToken(token);
+    const me = await usersApi.me();
+    setUser(me);
   };
 
-  const register = async (_name: string, _email: string, _password: string) => {
-    await AsyncStorage.setItem(AUTH_KEY, 'true');
-    setIsAuthenticated(true);
+  const register = async (name: string, username: string, email: string, password: string) => {
+    const { token } = await authApi.register(name, username, email, password);
+    await setToken(token);
+    const me = await usersApi.me();
+    setUser(me);
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem(AUTH_KEY);
-    setIsAuthenticated(false);
+    await removeToken();
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

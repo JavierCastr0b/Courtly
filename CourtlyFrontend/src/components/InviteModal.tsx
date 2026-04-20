@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -9,9 +9,11 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { User, mockCourts } from '../data/mockData';
+import { User, Court } from '../types';
+import { courtsApi } from '../api/courts';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
@@ -40,6 +42,11 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
   const [selectedTime, setSelectedTime] = useState('7:00 PM');
   const [players, setPlayers] = useState('4');
   const [message, setMessage] = useState('');
+  const [courts, setCourts] = useState<Court[]>([]);
+
+  useEffect(() => {
+    if (visible) courtsApi.getAll().then(setCourts).catch(() => {});
+  }, [visible]);
 
   const handleSend = () => {
     onSend?.({ court: selectedCourt, date: selectedDate, time: selectedTime, players, message });
@@ -70,7 +77,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
 
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
           <View style={styles.userRow}>
-            <Avatar name={user.name} initials={user.initials} size={44} />
+            <Avatar name={user.name} size={44} />
             <View>
               <Text style={styles.userName}>{user.name}</Text>
               <Text style={styles.userLevel}>{user.level}</Text>
@@ -78,7 +85,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
           </View>
 
           <Text style={styles.sectionLabel}>Seleccionar cancha</Text>
-          {mockCourts.map((court) => (
+          {courts.map((court) => (
             <TouchableOpacity
               key={court.id}
               onPress={() => setSelectedCourt(court.id)}
@@ -94,7 +101,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
                   <Text style={[styles.optionText, selectedCourt === court.id && styles.optionTextActive]}>
                     {court.name}
                   </Text>
-                  <Text style={styles.optionSub}>{court.distance}</Text>
+                  <Text style={styles.optionSub}>{court.address}</Text>
                 </View>
               </View>
               {selectedCourt === court.id && (

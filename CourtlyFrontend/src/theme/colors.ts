@@ -23,8 +23,20 @@ export const colors = {
 
 export type LevelType = 'Principiante' | 'Intermedio' | 'Avanzado';
 
-export const levelColor: Record<LevelType, string> = {
+export const levelColor: Record<string, string> = {
   Principiante: colors.beginner,
   Intermedio: colors.intermediate,
   Avanzado: colors.advanced,
+  PRINCIPIANTE: colors.beginner,
+  INTERMEDIO: colors.intermediate,
+  AVANZADO: colors.advanced,
+};
+
+export const levelDisplay: Record<string, string> = {
+  PRINCIPIANTE: 'Principiante',
+  INTERMEDIO: 'Intermedio',
+  AVANZADO: 'Avanzado',
+  Principiante: 'Principiante',
+  Intermedio: 'Intermedio',
+  Avanzado: 'Avanzado',
 };
