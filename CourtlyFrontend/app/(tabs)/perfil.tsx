@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
+import { useAuth } from '@/src/context/AuthContext';
 import { currentUser, mockPosts } from '@/src/data/mockData';
 import { Avatar } from '@/src/components/Avatar';
 import { Tag } from '@/src/components/Tag';
@@ -39,6 +40,7 @@ const PROFILE_TABS = ['Progreso', 'Actividad'] as const;
 type ProfileTab = typeof PROFILE_TABS[number];
 
 export default function PerfilScreen() {
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>('Progreso');
   const userPosts = mockPosts.filter((p) => p.user.id === '1').slice(0, 2);
 
@@ -49,7 +51,13 @@ export default function PerfilScreen() {
       {/* ─── Header ─────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tú</Text>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => Alert.alert('Configuración')}>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => Alert.alert('Configuración', undefined, [
+            { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
+            { text: 'Cancelar', style: 'cancel' },
+          ])}
+        >
           <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
