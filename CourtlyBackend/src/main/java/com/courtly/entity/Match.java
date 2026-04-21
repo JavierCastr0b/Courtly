@@ -17,9 +17,11 @@ public class Match {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = true)
     @JoinColumn(name = "court_id")
     private Court court;
+
+    private String customLocation;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "organizer_id")
@@ -41,7 +43,7 @@ public class Match {
     private String description;
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "match_participants",
             joinColumns = @JoinColumn(name = "match_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))

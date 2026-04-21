@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const BASE_URL = 'http://192.168.0.107:8080/api';
+export const BASE_URL = 'http://172.20.10.2:8080/api';
 const TOKEN_KEY = '@courtly_token';
 
 export async function getToken(): Promise<string | null> {

@@ -28,7 +28,8 @@ export interface Court {
 
 export interface Match {
   id: string;
-  court: Court;
+  court: Court | null;
+  customLocation: string | null;
   organizer: User;
   date: string;
   time: string;
@@ -57,7 +58,8 @@ export interface Invitation {
   id: string;
   fromUser: User;
   toUser: User;
-  court: Court;
+  court: Court | null;
+  customLocation: string | null;
   date: string;
   time: string;
   message: string | null;

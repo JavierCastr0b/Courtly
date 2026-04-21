@@ -23,9 +23,11 @@ public class Invitation {
     @JoinColumn(name = "to_user_id")
     private User toUser;
 
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = true)
     @JoinColumn(name = "court_id")
     private Court court;
+
+    private String customLocation;
 
     @Column(nullable = false)
     private LocalDate date;

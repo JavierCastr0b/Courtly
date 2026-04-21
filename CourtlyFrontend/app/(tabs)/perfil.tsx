@@ -5,63 +5,54 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Alert,
-  ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
-import { postsApi } from '@/src/api/posts';
-import { Post } from '@/src/types';
+import { usersApi } from '@/src/api/users';
 import { Avatar } from '@/src/components/Avatar';
-import { Tag } from '@/src/components/Tag';
 import { Button } from '@/src/components/Button';
-import { PostCard } from '@/src/components/PostCard';
 
-const WEEKS = 5;
-const DAYS = 7;
-const ACTIVITY = [
-  [0, 0, 1, 0, 2, 0, 0],
-  [0, 3, 0, 2, 0, 3, 0],
-  [1, 0, 2, 0, 0, 2, 1],
-  [0, 2, 0, 3, 2, 0, 0],
-  [3, 0, 1, 0, 0, 0, 0],
+const MENU_ITEMS = [
+  { label: 'Estadísticas', icon: 'bar-chart-outline' as const },
+  { label: 'Partidos', icon: 'tennisball-outline' as const },
+  { label: 'Publicaciones', icon: 'document-text-outline' as const },
+  { label: 'Equipamiento', icon: 'bag-handle-outline' as const },
 ];
-const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-
-function ActivityCell({ intensity }: { intensity: number }) {
-  const bgMap = ['#1C2028', '#0D3361', '#1565C0', '#1E90FF'];
-  return <View style={[styles.activityCell, { backgroundColor: bgMap[intensity] }]} />;
-}
-
-const PROFILE_TABS = ['Progreso', 'Actividad'] as const;
-type ProfileTab = typeof PROFILE_TABS[number];
 
 export default function PerfilScreen() {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProfileTab>('Progreso');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
+  const router = useRouter();
+  const { user, logout, refreshUser } = useAuth();
+  const [stats, setStats] = useState({ followersCount: 0, followingCount: 0 });
+  const [editVisible, setEditVisible] = useState(false);
+  const [editBio, setEditBio] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editAvailable, setEditAvailable] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLoadingPosts(true);
-    postsApi.getFeed()
-      .then(p => setPosts(p.content.slice(0, 5)))
-      .catch(() => {})
-      .finally(() => setLoadingPosts(false));
-  }, []);
+    if (!user) return;
+    usersApi.getStats(user.id)
+      .then(setStats)
+      .catch(() => {});
+  }, [user?.id]);
 
   if (!user) return null;
-
-  const winRate = user.matchesPlayed > 0
-    ? Math.round((user.wins / user.matchesPlayed) * 100)
-    : 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tú</Text>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/notifications')}>
+          <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerBtn}
           onPress={() => Alert.alert('Configuración', undefined, [
@@ -73,11 +64,9 @@ export default function PerfilScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Avatar + info */}
         <View style={styles.profileSection}>
           <Avatar name={user.name} size={72} available={user.available} />
           <View style={styles.profileInfo}>
@@ -91,134 +80,122 @@ export default function PerfilScreen() {
             ) : null}
           </View>
           <Button
-            label="Editar perfil"
+            label="Editar"
             variant="outline"
             size="sm"
-            onPress={() => Alert.alert('Editar perfil')}
+            onPress={() => {
+              setEditBio(user.bio ?? '');
+              setEditLocation(user.location ?? '');
+              setEditAvailable(user.available);
+              setEditVisible(true);
+            }}
           />
         </View>
 
         {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
 
+        {/* Siguiendo · Seguidores · Partidos */}
         <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.followingCount}</Text>
+            <Text style={styles.statLabel}>Siguiendo</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.followersCount}</Text>
+            <Text style={styles.statLabel}>Seguidores</Text>
+          </View>
+          <View style={styles.statDivider} />
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{user.matchesPlayed}</Text>
             <Text style={styles.statLabel}>Partidos</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{user.wins}</Text>
-            <Text style={styles.statLabel}>Victorias</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.success }]}>{winRate}%</Text>
-            <Text style={styles.statLabel}>Win rate</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Tag label={user.level} variant="level" style={{ marginBottom: 2 }} />
-            <Text style={styles.statLabel}>Nivel</Text>
-          </View>
         </View>
 
-        <View style={styles.tabs}>
-          {PROFILE_TABS.map((tab) => (
+        {/* Gráfico de rendimiento — próximamente */}
+        <View style={styles.chartPlaceholder}>
+          <Ionicons name="stats-chart-outline" size={28} color={colors.textMuted} />
+          <Text style={styles.chartPlaceholderText}>Rendimiento de partidos</Text>
+          <Text style={styles.chartPlaceholderSub}>Próximamente</Text>
+        </View>
+
+        {/* Menú de secciones */}
+        <View style={styles.menuList}>
+          {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              key={item.label}
+              style={[styles.menuItem, i < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              <View style={styles.menuItemLeft}>
+                <View style={styles.menuIcon}>
+                  <Ionicons name={item.icon} size={18} color={colors.primary} />
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
-        {activeTab === 'Progreso' && (
-          <>
-            <View style={styles.weekBlock}>
-              <View style={styles.weekHeader}>
-                <Text style={styles.weekTitle}>Esta semana</Text>
-              </View>
-              <View style={styles.weekStats}>
-                <View style={styles.weekStat}>
-                  <Text style={styles.weekStatValue}>0 km</Text>
-                  <Text style={styles.weekStatLabel}>Distancia</Text>
-                </View>
-                <View style={styles.weekStat}>
-                  <Text style={styles.weekStatValue}>0 min</Text>
-                  <Text style={styles.weekStatLabel}>Tiempo</Text>
-                </View>
-                <View style={styles.weekStat}>
-                  <Text style={styles.weekStatValue}>0 pts</Text>
-                  <Text style={styles.weekStatLabel}>Puntos</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.streakBlock}>
-              <View style={styles.streakInfo}>
-                <Ionicons name="flame" size={28} color={colors.ctaHighlight} />
-                <View>
-                  <Text style={styles.streakTitle}>Racha actual</Text>
-                  <Text style={styles.streakValue}>0 semanas</Text>
-                </View>
-              </View>
-              <View style={styles.streakInfo}>
-                <Ionicons name="trophy" size={28} color={colors.warning} />
-                <View>
-                  <Text style={styles.streakTitle}>Mejor racha</Text>
-                  <Text style={styles.streakValue}>3 semanas</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.calendarBlock}>
-              <View style={styles.calendarHeader}>
-                <Text style={styles.calendarMonth}>marzo 2026</Text>
-              </View>
-              <View style={styles.dayLabels}>
-                {DAY_LABELS.map((d) => (
-                  <Text key={d} style={styles.dayLabel}>{d}</Text>
-                ))}
-              </View>
-              {ACTIVITY.map((week, wi) => (
-                <View key={wi} style={styles.calendarWeek}>
-                  {week.map((day, di) => (
-                    <ActivityCell key={di} intensity={day} />
-                  ))}
-                </View>
-              ))}
-              <View style={styles.calendarLegend}>
-                <Text style={styles.calendarLegendText}>Menos</Text>
-                {[0, 1, 2, 3].map((i) => (
-                  <ActivityCell key={i} intensity={i} />
-                ))}
-                <Text style={styles.calendarLegendText}>Más</Text>
-              </View>
-            </View>
-
-            <View style={styles.premiumCard}>
-              <Ionicons name="lock-closed" size={20} color={colors.textSecondary} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.premiumTitle}>Desata todo tu potencial.</Text>
-                <Text style={styles.premiumSub}>
-                  Haz un seguimiento de tu progreso y alcanza tus objetivos con las funciones incluidas en la suscripción.
-                </Text>
-              </View>
-            </View>
-          </>
-        )}
-
-        {activeTab === 'Actividad' && (
-          <View style={{ marginTop: 16 }}>
-            {loadingPosts
-              ? <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
-              : posts.map((post) => <PostCard key={post.id} post={post} />)
-            }
-          </View>
-        )}
       </ScrollView>
+
+      <Modal visible={editVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Editar perfil</Text>
+            <TouchableOpacity onPress={() => setEditVisible(false)}>
+              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1, padding: 20 }}>
+            <Text style={styles.modalLabel}>Bio</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Cuéntanos sobre ti..."
+              placeholderTextColor={colors.textMuted}
+              value={editBio}
+              onChangeText={setEditBio}
+              multiline
+              numberOfLines={3}
+            />
+            <Text style={styles.modalLabel}>Ubicación</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Lima, Perú"
+              placeholderTextColor={colors.textMuted}
+              value={editLocation}
+              onChangeText={setEditLocation}
+            />
+            <TouchableOpacity
+              onPress={() => setEditAvailable(v => !v)}
+              style={[styles.availableToggle, editAvailable && styles.availableToggleOn]}
+            >
+              <Text style={{ color: editAvailable ? colors.success : colors.textSecondary, fontWeight: '600' }}>
+                {editAvailable ? 'Disponible hoy ✓' : 'No disponible hoy'}
+              </Text>
+            </TouchableOpacity>
+            <Button
+              label="Guardar cambios"
+              variant="primary"
+              fullWidth
+              size="lg"
+              loading={saving}
+              onPress={() => {
+                if (!user) return;
+                setSaving(true);
+                usersApi.update(user.id, { bio: editBio || undefined, location: editLocation || undefined, available: editAvailable })
+                  .then(() => refreshUser())
+                  .then(() => { setEditVisible(false); Alert.alert('Perfil actualizado'); })
+                  .catch(e => Alert.alert('Error', e.message))
+                  .finally(() => setSaving(false));
+              }}
+              style={{ marginTop: 8 }}
+            />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -226,25 +203,17 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
   headerBtn: { padding: 4 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 16,
-    gap: 14,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 18, paddingTop: 20, paddingBottom: 16, gap: 14,
   },
   profileInfo: { flex: 1 },
   profileName: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
@@ -253,96 +222,44 @@ const styles = StyleSheet.create({
   profileMetaText: { color: colors.textMuted, fontSize: 12 },
   bio: { color: colors.textSecondary, fontSize: 14, paddingHorizontal: 18, marginBottom: 16, lineHeight: 20 },
   statsRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.cardBg,
-    marginHorizontal: 18,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 20,
+    flexDirection: 'row', backgroundColor: colors.cardBg,
+    marginHorizontal: 18, borderRadius: 14, padding: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.border, marginBottom: 20,
   },
   statCard: { flex: 1, alignItems: 'center', gap: 6 },
   statDivider: { width: 1, height: 30, backgroundColor: colors.border },
   statValue: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
   statLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '500' },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginHorizontal: 18,
-    marginBottom: 4,
+  chartPlaceholder: {
+    marginHorizontal: 18, marginBottom: 20,
+    backgroundColor: colors.cardBg, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    height: 120, alignItems: 'center', justifyContent: 'center', gap: 6,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  chartPlaceholderText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  chartPlaceholderSub: { color: colors.textMuted, fontSize: 12 },
+  menuList: {
+    marginHorizontal: 18, backgroundColor: colors.cardBg,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+    overflow: 'hidden',
   },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  tabTextActive: { color: colors.primary },
-  weekBlock: {
-    marginHorizontal: 18,
-    marginTop: 16,
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 14,
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 16,
   },
-  weekHeader: { marginBottom: 12 },
-  weekTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  weekStats: { flexDirection: 'row', gap: 20 },
-  weekStat: {},
-  weekStatValue: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  weekStatLabel: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  streakBlock: { marginHorizontal: 18, flexDirection: 'row', gap: 12, marginBottom: 14 },
-  streakInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.cardBg,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  menuIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center', justifyContent: 'center',
   },
-  streakTitle: { color: colors.textSecondary, fontSize: 12 },
-  streakValue: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
-  calendarBlock: {
-    marginHorizontal: 18,
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 14,
-  },
-  calendarHeader: { marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  calendarMonth: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  dayLabels: { flexDirection: 'row', gap: 4, marginBottom: 6 },
-  dayLabel: { flex: 1, textAlign: 'center', color: colors.textMuted, fontSize: 11, fontWeight: '600' },
-  calendarWeek: { flexDirection: 'row', gap: 4, marginBottom: 4 },
-  activityCell: { flex: 1, aspectRatio: 1, borderRadius: 4 },
-  calendarLegend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' },
-  calendarLegendText: { color: colors.textMuted, fontSize: 11 },
-  premiumCard: {
-    marginHorizontal: 18,
-    backgroundColor: colors.secondary,
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 14,
-  },
-  premiumTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 4 },
-  premiumSub: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
+  menuLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: '500' },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginTop: 12 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  modalLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  modalInput: { backgroundColor: colors.secondary, borderRadius: 10, padding: 14, color: colors.textPrimary, fontSize: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border, textAlignVertical: 'top' },
+  availableToggle: { borderRadius: 10, padding: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.secondary, alignItems: 'center', marginBottom: 20 },
+  availableToggleOn: { borderColor: colors.success, backgroundColor: colors.success + '15' },
 });

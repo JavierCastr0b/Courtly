@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +31,34 @@ const LEVELS: { value: Level; label: string }[] = [
 const TIME_SLOTS = ['6:00 AM', '7:00 AM', '8:00 AM', '5:00 PM', '6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo', 'Lunes'];
 
+function resolveDate(label: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (label === 'Hoy') return fmt(now);
+  if (label === 'Mañana') { const d = new Date(now); d.setDate(d.getDate() + 1); return fmt(d); }
+  const dayMap: Record<string, number> = { Lunes: 1, Martes: 2, Miércoles: 3, Jueves: 4, Viernes: 5, Sábado: 6, Domingo: 0 };
+  const target = dayMap[label];
+  if (target !== undefined) {
+    const d = new Date(now);
+    const diff = (target - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return fmt(d);
+  }
+  return fmt(now);
+}
+
+function resolveTime(label: string): string {
+  const match = label.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!match) return '19:00';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${m}`;
+}
+
 export default function RegistrarScreen() {
   const [mode, setMode] = useState<Mode>('match');
   const [courts, setCourts] = useState<Court[]>([]);
@@ -41,23 +70,35 @@ export default function RegistrarScreen() {
   const [description, setDescription] = useState('');
   const [postText, setPostText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingCourts, setLoadingCourts] = useState(true);
+  const [customLocation, setCustomLocation] = useState('');
 
   useEffect(() => {
-    courtsApi.getAll().then(setCourts).catch(() => {});
+    setLoadingCourts(true);
+    courtsApi.getAll()
+      .then(setCourts)
+      .catch(() => setCourts([]))
+      .finally(() => setLoadingCourts(false));
   }, []);
 
   const handlePublish = async () => {
     if (mode === 'match' && !selectedCourt) {
-      Alert.alert('Selecciona una cancha', 'Elige dónde quieres jugar tu partido.');
+      Alert.alert('Selecciona una ubicación', 'Elige una cancha o usa "Otros" para indicar la ubicación.');
+      return;
+    }
+    if (mode === 'match' && selectedCourt === '__otros__' && !customLocation.trim()) {
+      Alert.alert('Indica la ubicación', 'Escribe la dirección o nombre del lugar.');
       return;
     }
     setLoading(true);
     try {
       if (mode === 'match') {
+        const isOtros = selectedCourt === '__otros__';
         await matchesApi.create({
-          courtId: selectedCourt!,
-          date: selectedDate,
-          time: selectedTime,
+          courtId: isOtros ? undefined : selectedCourt!,
+          customLocation: isOtros ? customLocation : undefined,
+          date: resolveDate(selectedDate),
+          time: resolveTime(selectedTime),
           level: selectedLevel,
           totalSpots: players,
           description: description || undefined,
@@ -66,10 +107,13 @@ export default function RegistrarScreen() {
           { text: 'OK', onPress: () => { setSelectedCourt(null); setDescription(''); } },
         ]);
       } else {
+        const postLocation = selectedCourt === '__otros__'
+          ? (customLocation || undefined)
+          : courts.find(c => c.id === selectedCourt)?.name;
         await postsApi.create({
           title: postText,
           level: selectedLevel,
-          location: selectedCourt ? courts.find(c => c.id === selectedCourt)?.name : undefined,
+          location: postLocation,
         });
         Alert.alert('¡Publicación creada!', 'Tu publicación es visible en el feed.', [
           { text: 'OK', onPress: () => { setPostText(''); setSelectedCourt(null); } },
@@ -83,6 +127,7 @@ export default function RegistrarScreen() {
   };
 
   const court = courts.find((c) => c.id === selectedCourt);
+  const locationLabel = selectedCourt === '__otros__' ? customLocation : court?.name;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -115,25 +160,63 @@ export default function RegistrarScreen() {
           {mode === 'match' ? (
             <>
               <Text style={styles.sectionLabel}>Seleccionar cancha</Text>
-              {courts.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  onPress={() => setSelectedCourt(c.id)}
-                  style={[styles.courtItem, selectedCourt === c.id && styles.courtItemSelected]}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.courtIcon}>
-                    <Ionicons name="tennisball-outline" size={18} color={selectedCourt === c.id ? colors.primary : colors.textSecondary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.courtName, selectedCourt === c.id && { color: colors.primary }]}>{c.name}</Text>
-                    <Text style={styles.courtMeta}>{c.address}</Text>
-                  </View>
-                  {selectedCourt === c.id && (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {loadingCourts ? (
+                <View style={styles.courtLoader}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={styles.courtLoaderText}>Cargando canchas...</Text>
+                </View>
+              ) : courts.length === 0 ? (
+                <View style={styles.noCourtsBox}>
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.textMuted} />
+                  <Text style={styles.noCourtsText}>No hay canchas registradas. Pide al administrador que agregue canchas para poder crear partidos.</Text>
+                </View>
+              ) : (
+                courts.map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => { setSelectedCourt(c.id); setCustomLocation(''); }}
+                    style={[styles.courtItem, selectedCourt === c.id && styles.courtItemSelected]}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.courtIcon}>
+                      <Ionicons name="tennisball-outline" size={18} color={selectedCourt === c.id ? colors.primary : colors.textSecondary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.courtName, selectedCourt === c.id && { color: colors.primary }]}>{c.name}</Text>
+                      <Text style={styles.courtMeta}>{c.address}</Text>
+                    </View>
+                    {selectedCourt === c.id && (
+                      <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+              <TouchableOpacity
+                onPress={() => setSelectedCourt('__otros__')}
+                style={[styles.courtItem, selectedCourt === '__otros__' && styles.courtItemSelected]}
+                activeOpacity={0.75}
+              >
+                <View style={styles.courtIcon}>
+                  <Ionicons name="location-outline" size={18} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.courtName, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
+                  <Text style={styles.courtMeta}>Ingresa la dirección manualmente</Text>
+                </View>
+                {selectedCourt === '__otros__' && (
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+              {selectedCourt === '__otros__' && (
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Escribe la dirección o nombre del lugar..."
+                  placeholderTextColor={colors.textMuted}
+                  value={customLocation}
+                  onChangeText={setCustomLocation}
+                  autoFocus
+                />
+              )}
 
               <Text style={styles.sectionLabel}>Fecha</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
@@ -196,12 +279,12 @@ export default function RegistrarScreen() {
                 numberOfLines={4}
               />
 
-              {court && (
+              {locationLabel && (
                 <View style={styles.preview}>
                   <Text style={styles.previewTitle}>Resumen del partido</Text>
                   <View style={styles.previewRow}>
                     <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
-                    <Text style={styles.previewText}>{court.name}</Text>
+                    <Text style={styles.previewText}>{locationLabel}</Text>
                   </View>
                   <View style={styles.previewRow}>
                     <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
@@ -243,17 +326,36 @@ export default function RegistrarScreen() {
               </View>
 
               <Text style={styles.sectionLabel}>Ubicación (opcional)</Text>
-              {courts.slice(0, 3).map((c) => (
+              {courts.map((c) => (
                 <TouchableOpacity
                   key={c.id}
-                  onPress={() => setSelectedCourt(c.id)}
+                  onPress={() => { setSelectedCourt(c.id); setCustomLocation(''); }}
                   style={[styles.courtItem, selectedCourt === c.id && styles.courtItemSelected]}
+                  activeOpacity={0.75}
                 >
                   <Ionicons name="location-outline" size={16} color={selectedCourt === c.id ? colors.primary : colors.textSecondary} />
                   <Text style={[styles.courtName, { flex: 1 }, selectedCourt === c.id && { color: colors.primary }]}>{c.name}</Text>
                   {selectedCourt === c.id && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                onPress={() => { setSelectedCourt('__otros__'); }}
+                style={[styles.courtItem, selectedCourt === '__otros__' && styles.courtItemSelected]}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="create-outline" size={16} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.courtName, { flex: 1 }, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
+                {selectedCourt === '__otros__' && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+              {selectedCourt === '__otros__' && (
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Escribe la dirección o ubicación..."
+                  placeholderTextColor={colors.textMuted}
+                  value={customLocation}
+                  onChangeText={setCustomLocation}
+                />
+              )}
 
               <Button label="Publicar" variant="primary" fullWidth size="lg" loading={loading} onPress={handlePublish} style={styles.publishBtn} />
             </>
@@ -343,4 +445,18 @@ const styles = StyleSheet.create({
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewText: { color: colors.textSecondary, fontSize: 13 },
   publishBtn: { marginTop: 4 },
+  courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
+  courtLoaderText: { color: colors.textMuted, fontSize: 14 },
+  noCourtsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noCourtsText: { color: colors.textMuted, fontSize: 13, flex: 1, lineHeight: 19 },
 });

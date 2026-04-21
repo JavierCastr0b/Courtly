@@ -14,14 +14,15 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
-  const spotsRatio = match.spotsLeft / match.totalSpots;
-  const urgency = match.spotsLeft === 1;
+  if (!match) return null;
+  const spotsLeft = match.spotsLeft ?? 0;
+  const urgency = spotsLeft === 1;
 
   if (compact) {
     return (
       <TouchableOpacity activeOpacity={0.8} style={styles.compactCard}>
         <View style={styles.compactHeader}>
-          <Text style={styles.compactCourt} numberOfLines={1}>{match.court.name}</Text>
+          <Text style={styles.compactCourt} numberOfLines={1}>{match.court?.name ?? match.customLocation ?? '—'}</Text>
           <Tag label={match.level} variant="level" level={match.level} />
         </View>
         <View style={styles.compactMeta}>
@@ -32,7 +33,7 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           <View style={styles.metaRow}>
             <Ionicons name="people-outline" size={13} color={urgency ? colors.ctaHighlight : colors.textSecondary} />
             <Text style={[styles.metaText, urgency && styles.urgentText]}>
-              {match.spotsLeft} {match.spotsLeft === 1 ? 'lugar' : 'lugares'}
+              {spotsLeft} {spotsLeft === 1 ? 'lugar' : 'lugares'}
             </Text>
           </View>
         </View>
@@ -54,7 +55,7 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
         <Avatar name={match.organizer.name} size={40} />
         <View style={styles.headerInfo}>
           <Text style={styles.organizerName}>{match.organizer.name}</Text>
-          <Text style={styles.courtName} numberOfLines={1}>{match.court.name}</Text>
+          <Text style={styles.courtName} numberOfLines={1}>{match.court?.name ?? match.customLocation ?? '—'}</Text>
         </View>
         <Tag label={match.level} variant="level" level={match.level} />
       </View>
@@ -66,7 +67,7 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
         </View>
         <View style={styles.detailItem}>
           <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
-          <Text style={styles.detailText} numberOfLines={1}>{match.court.address}</Text>
+          <Text style={styles.detailText} numberOfLines={1}>{match.court?.address ?? match.customLocation ?? '—'}</Text>
         </View>
         <View style={styles.detailItem}>
           <Ionicons
@@ -75,18 +76,18 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
             color={urgency ? colors.ctaHighlight : colors.textSecondary}
           />
           <Text style={[styles.detailText, urgency && styles.urgentText]}>
-            {match.spotsLeft} de {match.totalSpots} lugares disponibles
+            {spotsLeft} de {match.totalSpots ?? 0} lugares disponibles
           </Text>
         </View>
       </View>
 
       <View style={styles.spotsBar}>
-        {Array.from({ length: match.totalSpots }).map((_, i) => (
+        {Array.from({ length: match.totalSpots ?? 0 }).map((_, i) => (
           <View
             key={i}
             style={[
               styles.spotDot,
-              i < match.totalSpots - match.spotsLeft && styles.spotFilled,
+              i < (match.totalSpots ?? 0) - spotsLeft && styles.spotFilled,
             ]}
           />
         ))}

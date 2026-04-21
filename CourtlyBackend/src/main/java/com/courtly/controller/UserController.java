@@ -1,6 +1,7 @@
 package com.courtly.controller;
 
 import com.courtly.entity.User;
+import com.courtly.repository.PostRepository;
 import com.courtly.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
 
     @GetMapping("/me")
     public ResponseEntity<User> me(@AuthenticationPrincipal User user) {
@@ -67,5 +69,19 @@ public class UserController {
         me.getFollowing().remove(target);
         userRepository.save(me);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<Map<String, Long>> stats(@PathVariable String id) {
+        long followers = userRepository.countFollowers(id);
+        long following = userRepository.countFollowing(id);
+        return ResponseEntity.ok(Map.of("followersCount", followers, "followingCount", following));
+    }
+
+    @GetMapping("/me/following")
+    public ResponseEntity<List<String>> myFollowing(@AuthenticationPrincipal User current) {
+        User me = userRepository.findById(current.getId()).orElseThrow();
+        List<String> ids = me.getFollowing().stream().map(User::getId).toList();
+        return ResponseEntity.ok(ids);
     }
 }

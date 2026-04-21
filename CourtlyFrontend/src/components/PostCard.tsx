@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../types';
+import { postsApi } from '../api/posts';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
@@ -17,8 +18,13 @@ export function PostCard({ post, onJoin }: PostCardProps) {
   const [likesCount, setLikesCount] = useState(post.likes);
 
   const handleLike = () => {
-    setLiked((prev) => !prev);
-    setLikesCount((prev) => (liked ? prev - 1 : prev + 1));
+    const next = !liked;
+    setLiked(next);
+    setLikesCount((prev) => (next ? prev + 1 : prev - 1));
+    (next ? postsApi.like(post.id) : postsApi.unlike(post.id)).catch(() => {
+      setLiked(!next);
+      setLikesCount((prev) => (next ? prev - 1 : prev + 1));
+    });
   };
 
   return (

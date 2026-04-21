@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
   ScrollView,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -14,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { Court, Match } from '@/src/types';
 import { courtsApi } from '@/src/api/courts';
+import { matchesApi } from '@/src/api/matches';
 import { Button } from '@/src/components/Button';
 import { Tag } from '@/src/components/Tag';
 
@@ -36,17 +40,39 @@ const INITIAL_REGION = {
 };
 
 export default function MapasScreen() {
+  const router = useRouter();
   const [courts, setCourts] = useState<Court[]>([]);
+  const [allCourts, setAllCourts] = useState<Court[]>([]);
   const [courtMatches, setCourtMatches] = useState<Record<string, Match[]>>({});
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState('Todos');
+  const [searchText, setSearchText] = useState('');
   const sheetY = useRef(new Animated.Value(BOTTOM_SHEET_H)).current;
   const isSheetOpen = useRef(false);
 
   useEffect(() => {
-    courtsApi.getAll().then(setCourts).catch(() => {});
+    courtsApi.getAll().then(c => { setCourts(c); setAllCourts(c); }).catch(() => {});
   }, []);
+
+  const handleSearch = (q: string) => {
+    setSearchText(q);
+    if (!q.trim()) { setCourts(allCourts); return; }
+    courtsApi.search(q).then(setCourts).catch(() => {
+      setCourts(allCourts.filter(c => c.name.toLowerCase().includes(q.toLowerCase())));
+    });
+  };
+
+  const handleJoinMatch = (matchId: string) => {
+    matchesApi.join(matchId)
+      .then(updated => {
+        setCourtMatches(prev => ({
+          ...prev,
+          [updated.court.id]: (prev[updated.court.id] ?? []).map(m => m.id === matchId ? updated : m),
+        }));
+      })
+      .catch(e => Alert.alert('Error', e.message));
+  };
 
   const loadMatches = (court: Court) => {
     if (!courtMatches[court.id]) {
@@ -106,11 +132,13 @@ export default function MapasScreen() {
       <SafeAreaView edges={['top']} style={styles.topOverlay} pointerEvents="box-none">
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={colors.textSecondary} />
-          <Text style={styles.searchText}>Buscar ubicaciones</Text>
-          <TouchableOpacity style={styles.savedBtn}>
-            <Ionicons name="bookmark-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.savedText}>Guardado</Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar canchas..."
+            placeholderTextColor={colors.textMuted}
+            value={searchText}
+            onChangeText={handleSearch}
+          />
         </View>
 
         <ScrollView
@@ -163,7 +191,7 @@ export default function MapasScreen() {
       </View>
 
       <View style={styles.floatingCTA}>
-        <TouchableOpacity style={styles.ctaButton}>
+        <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/(tabs)/registrar')}>
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.ctaButtonText}>Crear partido</Text>
         </TouchableOpacity>
@@ -220,7 +248,7 @@ export default function MapasScreen() {
                           {match.spotsLeft} {match.spotsLeft === 1 ? 'lugar' : 'lugares'}
                         </Text>
                       </View>
-                      <Button label="Unirme" variant="primary" size="sm" onPress={() => {}} style={{ marginTop: 8 }} />
+                      <Button label="Unirme" variant="primary" size="sm" onPress={() => handleJoinMatch(match.id)} style={{ marginTop: 8 }} />
                     </View>
                   </View>
                 ))
@@ -249,9 +277,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 8,
   },
-  searchText: { flex: 1, color: colors.textMuted, fontSize: 14 },
-  savedBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 10 },
-  savedText: { color: colors.textSecondary, fontSize: 13 },
+  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14, paddingVertical: 0 },
   filterRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterChip: {
     flexDirection: 'row',

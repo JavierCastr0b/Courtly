@@ -33,12 +33,15 @@ public class InvitationController {
     public ResponseEntity<Invitation> create(@Valid @RequestBody CreateInvitationRequest req,
                                              @AuthenticationPrincipal User user) {
         var toUser = userRepository.findById(req.getToUserId()).orElseThrow();
-        var court = courtRepository.findById(req.getCourtId()).orElseThrow();
+        var court = req.getCourtId() != null
+                ? courtRepository.findById(req.getCourtId()).orElse(null)
+                : null;
 
         Invitation inv = Invitation.builder()
                 .fromUser(user)
                 .toUser(toUser)
                 .court(court)
+                .customLocation(req.getCustomLocation())
                 .date(req.getDate())
                 .time(req.getTime())
                 .message(req.getMessage())

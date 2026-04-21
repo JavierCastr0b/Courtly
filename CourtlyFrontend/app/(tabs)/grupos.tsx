@@ -8,8 +8,12 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { User, Invitation, Challenge, Club } from '@/src/types';
@@ -26,6 +30,7 @@ type TopTab = 'Amigos' | 'Retos' | 'Clubes';
 const TOP_TABS: TopTab[] = ['Amigos', 'Retos', 'Clubes'];
 
 export default function GruposScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TopTab>('Amigos');
   const [inviteUser, setInviteUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +41,10 @@ export default function GruposScreen() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [joinedClubs, setJoinedClubs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [challengeTarget, setChallengeTarget] = useState<User | null>(null);
+  const [challengeDesc, setChallengeDesc] = useState('');
+  const [challengeDeadline, setChallengeDeadline] = useState('');
+  const [challengeModalVisible, setChallengeModalVisible] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -51,6 +60,11 @@ export default function GruposScreen() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set());
+  useEffect(() => {
+    usersApi.getFollowing().then(ids => setFollowedIds(new Set(ids))).catch(() => {});
+  }, []);
+
   const handleAcceptInvitation = (id: string) => {
     invitationsApi.accept(id)
       .then(() => setInvitations(prev => prev.filter(i => i.id !== id)))
@@ -61,6 +75,26 @@ export default function GruposScreen() {
     invitationsApi.reject(id)
       .then(() => setInvitations(prev => prev.filter(i => i.id !== id)))
       .catch(() => Alert.alert('Error', 'No se pudo rechazar la invitación.'));
+  };
+
+  const handleCreateChallenge = () => {
+    if (!challengeTarget) return;
+    if (!challengeDesc.trim()) { Alert.alert('Describe el reto'); return; }
+    if (!challengeDeadline.trim()) { Alert.alert('Ingresa una fecha límite'); return; }
+    challengesApi.create({
+      challengedUserId: challengeTarget.id,
+      description: challengeDesc,
+      deadline: challengeDeadline,
+    })
+      .then(c => {
+        setChallenges(prev => [...prev, c]);
+        setChallengeModalVisible(false);
+        setChallengeDesc('');
+        setChallengeDeadline('');
+        setChallengeTarget(null);
+        Alert.alert('¡Reto enviado!', `Reto enviado a ${challengeTarget.name}.`);
+      })
+      .catch(e => Alert.alert('Error', e.message));
   };
 
   const handleAcceptChallenge = (id: string) => {
@@ -137,7 +171,7 @@ export default function GruposScreen() {
                       <Text style={styles.invitationUser}>{inv.fromUser.name}</Text>
                       <View style={styles.invitationMeta}>
                         <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
-                        <Text style={styles.invitationMetaText}>{inv.court.name}</Text>
+                        <Text style={styles.invitationMetaText}>{inv.court?.name ?? inv.customLocation ?? '—'}</Text>
                       </View>
                       <View style={styles.invitationMeta}>
                         <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
@@ -180,7 +214,7 @@ export default function GruposScreen() {
                 key={u.id}
                 user={u}
                 onInvite={(u) => setInviteUser(u)}
-                onViewProfile={(u) => Alert.alert(u.name, `Nivel: ${u.level}\nPartidos: ${u.matchesPlayed}`)}
+                onViewProfile={(u) => router.push(`/profile/${u.id}`)}
               />
             ))}
             {filteredUsers.length === 0 && (
@@ -260,7 +294,7 @@ export default function GruposScreen() {
               label="Crear nuevo reto"
               variant="outline"
               size="lg"
-              onPress={() => Alert.alert('Crear reto', 'Elige un amigo para crear un reto.')}
+              onPress={() => setChallengeModalVisible(true)}
             />
           </View>
         </ScrollView>
@@ -329,11 +363,72 @@ export default function GruposScreen() {
         </ScrollView>
       )}
 
+      {/* Challenge create modal */}
+      <Modal visible={challengeModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setChallengeModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Crear reto</Text>
+            <TouchableOpacity onPress={() => setChallengeModalVisible(false)}>
+              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1, padding: 20 }}>
+            <Text style={styles.modalLabel}>Retar a</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {users.map(u => (
+                  <TouchableOpacity
+                    key={u.id}
+                    onPress={() => setChallengeTarget(u)}
+                    style={[styles.userChip, challengeTarget?.id === u.id && styles.userChipActive]}
+                  >
+                    <Text style={[styles.userChipText, challengeTarget?.id === u.id && { color: colors.primary }]}>
+                      {u.name.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <Text style={styles.modalLabel}>Descripción del reto</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej. Primer set gana"
+              placeholderTextColor={colors.textMuted}
+              value={challengeDesc}
+              onChangeText={setChallengeDesc}
+              multiline
+            />
+            <Text style={styles.modalLabel}>Fecha límite (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="2026-05-01"
+              placeholderTextColor={colors.textMuted}
+              value={challengeDeadline}
+              onChangeText={setChallengeDeadline}
+            />
+            <Button label="Enviar reto" variant="cta" fullWidth size="lg" onPress={handleCreateChallenge} style={{ marginTop: 8 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <InviteModal
         visible={inviteUser !== null}
         user={inviteUser}
         onClose={() => setInviteUser(null)}
-        onSend={() => Alert.alert('¡Invitación enviada!', `Invitación enviada a ${inviteUser?.name}.`)}
+        onSend={(data) => {
+          if (!inviteUser) return;
+          invitationsApi.create({
+            toUserId: inviteUser.id,
+            courtId: data.court || undefined,
+            customLocation: data.customLocation || undefined,
+            date: data.date,
+            time: data.time,
+            message: data.message || undefined,
+          })
+            .then(() => Alert.alert('¡Invitación enviada!', `Invitación enviada a ${inviteUser.name}.`))
+            .catch(e => Alert.alert('Error', e.message));
+        }}
       />
     </SafeAreaView>
   );
@@ -471,4 +566,12 @@ const styles = StyleSheet.create({
   },
   eventsTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 8 },
   eventsSubtitle: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginTop: 12 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  modalLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  modalInput: { backgroundColor: colors.secondary, borderRadius: 10, padding: 14, color: colors.textPrimary, fontSize: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  userChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1.5, borderColor: 'transparent' },
+  userChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+  userChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
 });

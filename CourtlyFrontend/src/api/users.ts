@@ -9,4 +9,6 @@ export const usersApi = {
     api.put<User>(`/users/${id}`, data).then(r => r.data),
   follow: (id: string) => api.post(`/users/${id}/follow`),
   unfollow: (id: string) => api.delete(`/users/${id}/follow`),
+  getFollowing: () => api.get<string[]>('/users/me/following').then(r => r.data),
+  getStats: (id: string) => api.get<{ followersCount: number; followingCount: number }>(`/users/${id}/stats`).then(r => r.data),
 };

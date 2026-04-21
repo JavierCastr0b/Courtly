@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
@@ -25,6 +27,11 @@ public class PostController {
     @GetMapping
     public Page<Post> getFeed(@PageableDefault(size = 20) Pageable pageable) {
         return postRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Post> getByUser(@PathVariable String userId) {
+        return postRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @PostMapping

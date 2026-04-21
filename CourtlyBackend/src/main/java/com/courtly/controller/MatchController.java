@@ -44,11 +44,13 @@ public class MatchController {
     @PostMapping
     public ResponseEntity<Match> create(@Valid @RequestBody CreateMatchRequest req,
                                         @AuthenticationPrincipal User user) {
-        var court = courtRepository.findById(req.getCourtId())
-                .orElseThrow(() -> new IllegalArgumentException("Court not found"));
+        var court = req.getCourtId() != null
+                ? courtRepository.findById(req.getCourtId()).orElse(null)
+                : null;
 
         Match match = Match.builder()
                 .court(court)
+                .customLocation(req.getCustomLocation())
                 .organizer(user)
                 .date(req.getDate())
                 .time(req.getTime())

@@ -2,7 +2,8 @@ import { api } from './client';
 import { Match, Level } from '../types';
 
 interface CreateMatchData {
-  courtId: string;
+  courtId?: string;
+  customLocation?: string;
   date: string;
   time: string;
   level: Level;

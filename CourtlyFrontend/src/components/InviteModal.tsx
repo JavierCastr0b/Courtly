@@ -27,6 +27,7 @@ interface InviteModalProps {
 
 export interface InviteData {
   court: string;
+  customLocation: string;
   date: string;
   time: string;
   players: string;
@@ -36,20 +37,35 @@ export interface InviteData {
 const TIME_OPTIONS = ['6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo'];
 
+const OTROS_ID = '__otros__';
+
 export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps) {
   const [selectedCourt, setSelectedCourt] = useState('');
+  const [customLocation, setCustomLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState('Hoy');
   const [selectedTime, setSelectedTime] = useState('7:00 PM');
   const [players, setPlayers] = useState('4');
   const [message, setMessage] = useState('');
   const [courts, setCourts] = useState<Court[]>([]);
+  const [loadingCourts, setLoadingCourts] = useState(false);
 
   useEffect(() => {
-    if (visible) courtsApi.getAll().then(setCourts).catch(() => {});
+    if (visible) {
+      setLoadingCourts(true);
+      courtsApi.getAll().then(setCourts).catch(() => setCourts([])).finally(() => setLoadingCourts(false));
+    }
   }, [visible]);
 
   const handleSend = () => {
-    onSend?.({ court: selectedCourt, date: selectedDate, time: selectedTime, players, message });
+    const isOtros = selectedCourt === OTROS_ID;
+    onSend?.({
+      court: isOtros ? '' : selectedCourt,
+      customLocation: isOtros ? customLocation : '',
+      date: selectedDate,
+      time: selectedTime,
+      players,
+      message,
+    });
     onClose();
   };
 
@@ -85,30 +101,66 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
           </View>
 
           <Text style={styles.sectionLabel}>Seleccionar cancha</Text>
-          {courts.map((court) => (
-            <TouchableOpacity
-              key={court.id}
-              onPress={() => setSelectedCourt(court.id)}
-              style={[styles.optionItem, selectedCourt === court.id && styles.optionSelected]}
-            >
-              <View style={styles.optionInner}>
-                <Ionicons
-                  name="tennisball-outline"
-                  size={16}
-                  color={selectedCourt === court.id ? colors.primary : colors.textSecondary}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.optionText, selectedCourt === court.id && styles.optionTextActive]}>
-                    {court.name}
-                  </Text>
-                  <Text style={styles.optionSub}>{court.address}</Text>
+          {loadingCourts ? (
+            <ActivityIndicator color={colors.primary} style={{ marginBottom: 12 }} />
+          ) : courts.length === 0 ? (
+            <View style={styles.noCourtsBox}>
+              <Ionicons name="alert-circle-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.noCourtsText}>No hay canchas registradas. Usa "Otros" para indicar la ubicación.</Text>
+            </View>
+          ) : (
+            courts.map((court) => (
+              <TouchableOpacity
+                key={court.id}
+                onPress={() => setSelectedCourt(court.id)}
+                style={[styles.optionItem, selectedCourt === court.id && styles.optionSelected]}
+              >
+                <View style={styles.optionInner}>
+                  <Ionicons
+                    name="tennisball-outline"
+                    size={16}
+                    color={selectedCourt === court.id ? colors.primary : colors.textSecondary}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.optionText, selectedCourt === court.id && styles.optionTextActive]}>
+                      {court.name}
+                    </Text>
+                    <Text style={styles.optionSub}>{court.address}</Text>
+                  </View>
                 </View>
-              </View>
-              {selectedCourt === court.id && (
-                <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          ))}
+                {selectedCourt === court.id && (
+                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+          <TouchableOpacity
+            onPress={() => setSelectedCourt(OTROS_ID)}
+            style={[styles.optionItem, selectedCourt === OTROS_ID && styles.optionSelected]}
+          >
+            <View style={styles.optionInner}>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color={selectedCourt === OTROS_ID ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.optionText, selectedCourt === OTROS_ID && styles.optionTextActive]}>
+                Otros
+              </Text>
+            </View>
+            {selectedCourt === OTROS_ID && (
+              <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+          {selectedCourt === OTROS_ID && (
+            <TextInput
+              style={styles.textInput}
+              placeholder="Escribe la dirección o ubicación..."
+              placeholderTextColor={colors.textMuted}
+              value={customLocation}
+              onChangeText={setCustomLocation}
+            />
+          )}
 
           <Text style={styles.sectionLabel}>Fecha</Text>
           <View style={styles.pillRow}>
@@ -311,4 +363,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  noCourtsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noCourtsText: { color: colors.textMuted, fontSize: 13, flex: 1, lineHeight: 18 },
 });

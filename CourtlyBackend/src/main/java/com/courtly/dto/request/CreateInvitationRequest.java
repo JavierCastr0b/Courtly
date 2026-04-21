@@ -9,7 +9,8 @@ import java.time.LocalTime;
 @Data
 public class CreateInvitationRequest {
     @NotNull private String toUserId;
-    @NotNull private String courtId;
+    private String courtId;
+    private String customLocation;
     @NotNull private LocalDate date;
     @NotNull private LocalTime time;
     private String message;

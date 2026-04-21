@@ -21,6 +21,7 @@ export interface PageResponse<T> {
 export const postsApi = {
   getFeed: (page = 0, size = 20) =>
     api.get<PageResponse<Post>>('/posts', { params: { page, size } }).then(r => r.data),
+  getByUser: (userId: string) => api.get<Post[]>(`/posts/user/${userId}`).then(r => r.data),
   create: (data: CreatePostData) => api.post<Post>('/posts', data).then(r => r.data),
   delete: (id: string) => api.delete(`/posts/${id}`),
   like: (id: string) => api.post(`/posts/${id}/like`),
