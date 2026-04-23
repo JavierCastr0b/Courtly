@@ -35,6 +35,7 @@ export default function HomeScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [inviteTarget, setInviteTarget] = useState<User | null>(null);
@@ -43,16 +44,18 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [m, p, fp, u, inv, following] = await Promise.all([
+    const [m, p, fp, u, inv, following, liked] = await Promise.all([
       matchesApi.getAll().catch(() => [] as Match[]),
       postsApi.getFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       postsApi.getFollowingFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       usersApi.search('').catch(() => [] as User[]),
       invitationsApi.getPending().catch(() => [] as Invitation[]),
       usersApi.getFollowing().catch(() => [] as string[]),
+      postsApi.getLikedIds().catch(() => [] as string[]),
     ]);
     setMatches(m);
     setPosts(p.content.slice(0, 10));
+    setLikedIds(new Set(liked));
     setFollowingPosts(fp.content);
     setSuggestions(u.filter(s => s.id !== user?.id).slice(0, 5));
     setNotifCount(inv.length);
@@ -187,7 +190,7 @@ export default function HomeScreen() {
                     <Text style={styles.sectionTitle}>Publicaciones</Text>
                   </View>
                   {posts.map(post => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} />
                   ))}
                 </View>
               )}
@@ -208,7 +211,7 @@ export default function HomeScreen() {
               {followingPosts.length > 0 ? (
                 <View style={styles.section}>
                   {followingPosts.map(post => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} />
                   ))}
                 </View>
               ) : (

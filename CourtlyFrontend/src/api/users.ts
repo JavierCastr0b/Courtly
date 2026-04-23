@@ -11,4 +11,7 @@ export const usersApi = {
   unfollow: (id: string) => api.delete(`/users/${id}/follow`),
   getFollowing: () => api.get<string[]>('/users/me/following').then(r => r.data),
   getStats: (id: string) => api.get<{ followersCount: number; followingCount: number }>(`/users/${id}/stats`).then(r => r.data),
+  getFollowersList: (id: string) => api.get<User[]>(`/users/${id}/followers`).then(r => r.data),
+  getFollowingList: (id: string) => api.get<User[]>(`/users/${id}/following`).then(r => r.data),
+  getFriends: (id: string) => api.get<User[]>(`/users/${id}/friends`).then(r => r.data),
 };

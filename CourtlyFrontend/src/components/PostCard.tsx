@@ -8,10 +8,11 @@ import { Avatar } from './Avatar';
 
 interface PostCardProps {
   post: Post;
+  initialLiked?: boolean;
 }
 
-export function PostCard({ post }: PostCardProps) {
-  const [liked, setLiked] = useState(false);
+export function PostCard({ post, initialLiked = false }: PostCardProps) {
+  const [liked, setLiked] = useState(initialLiked);
   const [likesCount, setLikesCount] = useState(post.likes);
 
   const handleLike = () => {

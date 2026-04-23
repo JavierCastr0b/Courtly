@@ -37,6 +37,8 @@ export interface Match {
   spotsLeft: number;
   description: string | null;
   participants: User[];
+  matchType: string | null;
+  sportType: string | null;
 }
 
 export interface Post {

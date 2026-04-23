@@ -25,6 +25,7 @@ export default function ProfileScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [followed, setFollowed] = useState(false);
   const [stats, setStats] = useState({ followersCount: 0, followingCount: 0 });
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,11 +34,13 @@ export default function ProfileScreen() {
       postsApi.getByUser(id).catch(() => [] as Post[]),
       usersApi.getFollowing().catch(() => [] as string[]),
       usersApi.getStats(id).catch(() => ({ followersCount: 0, followingCount: 0 })),
-    ]).then(([u, userPosts, following, s]) => {
+      postsApi.getLikedIds().catch(() => [] as string[]),
+    ]).then(([u, userPosts, following, s, liked]) => {
       setProfile(u);
       setPosts(userPosts);
       setFollowed(following.includes(id));
       setStats(s);
+      setLikedIds(new Set(liked));
     }).catch(() => Alert.alert('Error', 'No se pudo cargar el perfil.'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -88,15 +91,15 @@ export default function ProfileScreen() {
 
           {/* Stats */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <TouchableOpacity style={styles.statCard} activeOpacity={0.7} onPress={() => router.push({ pathname: '/followers/[id]', params: { id, mode: 'following' } })}>
               <Text style={styles.statValue}>{stats.followingCount}</Text>
               <Text style={styles.statLabel}>Siguiendo</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
-            <View style={styles.statCard}>
+            <TouchableOpacity style={styles.statCard} activeOpacity={0.7} onPress={() => router.push({ pathname: '/followers/[id]', params: { id, mode: 'followers' } })}>
               <Text style={styles.statValue}>{stats.followersCount}</Text>
               <Text style={styles.statLabel}>Seguidores</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{profile.matchesPlayed}</Text>
@@ -128,7 +131,7 @@ export default function ProfileScreen() {
           {posts.length > 0 && (
             <View style={styles.postsSection}>
               <Text style={styles.sectionTitle}>Publicaciones</Text>
-              {posts.map(p => <PostCard key={p.id} post={p} />)}
+              {posts.map(p => <PostCard key={p.id} post={p} initialLiked={likedIds.has(p.id)} />)}
             </View>
           )}
 

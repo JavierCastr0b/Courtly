@@ -47,20 +47,6 @@ export function Avatar({ name, initials, size = 44, available = false, style }: 
       >
         <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
       </View>
-      {available && (
-        <View
-          style={[
-            styles.badge,
-            {
-              width: size * 0.3,
-              height: size * 0.3,
-              borderRadius: (size * 0.3) / 2,
-              bottom: 0,
-              right: 0,
-            },
-          ]}
-        />
-      )}
     </View>
   );
 }

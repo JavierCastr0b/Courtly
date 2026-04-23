@@ -9,6 +9,8 @@ interface CreateMatchData {
   level: Level;
   totalSpots: number;
   description?: string;
+  matchType?: string;
+  sportType?: string;
 }
 
 export const matchesApi = {

@@ -22,6 +22,12 @@ import { Button } from '@/src/components/Button';
 import { Tag } from '@/src/components/Tag';
 
 type Mode = 'match' | 'post';
+type MatchType = 'SINGLES' | 'DOBLES';
+
+const MATCH_TYPES: { value: MatchType; label: string; spots: number; icon: string }[] = [
+  { value: 'SINGLES', label: 'Singles', spots: 1, icon: 'person-outline' },
+  { value: 'DOBLES', label: 'Dobles', spots: 3, icon: 'people-outline' },
+];
 
 const LEVELS: { value: Level; label: string }[] = [
   { value: 'PRINCIPIANTE', label: 'Principiante' },
@@ -66,7 +72,8 @@ export default function RegistrarScreen() {
   const [selectedLevel, setSelectedLevel] = useState<Level>('INTERMEDIO');
   const [selectedDate, setSelectedDate] = useState('Hoy');
   const [selectedTime, setSelectedTime] = useState('7:00 PM');
-  const [players, setPlayers] = useState(2);
+  const [matchType, setMatchType] = useState<MatchType>('DOBLES');
+  const [players, setPlayers] = useState(3);
   const [description, setDescription] = useState('');
   const [postText, setPostText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -100,7 +107,8 @@ export default function RegistrarScreen() {
           date: resolveDate(selectedDate),
           time: resolveTime(selectedTime),
           level: selectedLevel,
-          totalSpots: players,
+          totalSpots: players + 1,
+          matchType,
           description: description || undefined,
         });
         Alert.alert('¡Partido publicado!', 'Tu partido ya es visible para otros jugadores.', [
@@ -257,15 +265,34 @@ export default function RegistrarScreen() {
                 ))}
               </View>
 
-              <Text style={styles.sectionLabel}>Jugadores necesarios</Text>
-              <View style={styles.stepper}>
-                <TouchableOpacity onPress={() => setPlayers((p) => Math.max(1, p - 1))} style={styles.stepperBtn}>
-                  <Ionicons name="remove" size={20} color={colors.primary} />
-                </TouchableOpacity>
-                <Text style={styles.stepperValue}>{players}</Text>
-                <TouchableOpacity onPress={() => setPlayers((p) => Math.min(4, p + 1))} style={styles.stepperBtn}>
-                  <Ionicons name="add" size={20} color={colors.primary} />
-                </TouchableOpacity>
+              <Text style={styles.sectionLabel}>Modalidad</Text>
+              <View style={styles.matchTypeRow}>
+                {MATCH_TYPES.map((mt) => (
+                  <TouchableOpacity
+                    key={mt.value}
+                    style={[styles.matchTypeCard, matchType === mt.value && styles.matchTypeCardActive]}
+                    onPress={() => { setMatchType(mt.value); setPlayers(mt.spots); }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name={mt.icon as any} size={22} color={matchType === mt.value ? colors.primary : colors.textSecondary} />
+                    <Text style={[styles.matchTypeLabel, matchType === mt.value && styles.matchTypeLabelActive]}>{mt.label}</Text>
+                    <Text style={styles.matchTypeSub}>{mt.spots + 1} jugadores</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>Jugadores adicionales</Text>
+              <View style={styles.stepperRow}>
+                <View style={styles.stepper}>
+                  <TouchableOpacity onPress={() => setPlayers((p) => Math.max(1, p - 1))} style={styles.stepperBtn}>
+                    <Ionicons name="remove" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.stepperValue}>{players}</Text>
+                  <TouchableOpacity onPress={() => setPlayers((p) => Math.min(4, p + 1))} style={styles.stepperBtn}>
+                    <Ionicons name="add" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.stepperHint}>+ tú = <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{players + 1} total</Text></Text>
               </View>
 
               <Text style={styles.sectionLabel}>Descripción (opcional)</Text>
@@ -292,7 +319,7 @@ export default function RegistrarScreen() {
                   </View>
                   <View style={styles.previewRow}>
                     <Ionicons name="people-outline" size={15} color={colors.textSecondary} />
-                    <Text style={styles.previewText}>{players} jugadores · {LEVELS.find(l => l.value === selectedLevel)?.label}</Text>
+                    <Text style={styles.previewText}>{players + 1} jugadores · {matchType === 'SINGLES' ? 'Singles' : 'Dobles'} · {LEVELS.find(l => l.value === selectedLevel)?.label}</Text>
                   </View>
                 </View>
               )}
@@ -445,6 +472,19 @@ const styles = StyleSheet.create({
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewText: { color: colors.textSecondary, fontSize: 13 },
   publishBtn: { marginTop: 4 },
+  matchTypeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  matchTypeCard: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.secondary, borderRadius: 12,
+    paddingVertical: 16, gap: 6,
+    borderWidth: 1.5, borderColor: 'transparent',
+  },
+  matchTypeCardActive: { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+  matchTypeLabel: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
+  matchTypeLabelActive: { color: colors.primary },
+  matchTypeSub: { color: colors.textMuted, fontSize: 12 },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  stepperHint: { color: colors.textSecondary, fontSize: 14 },
   courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
   courtLoaderText: { color: colors.textMuted, fontSize: 14 },
   noCourtsBox: {

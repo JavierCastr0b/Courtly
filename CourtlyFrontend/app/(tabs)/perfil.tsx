@@ -96,15 +96,15 @@ export default function PerfilScreen() {
 
         {/* Siguiendo · Seguidores · Partidos */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard} activeOpacity={0.7} onPress={() => router.push({ pathname: '/followers/[id]', params: { id: user.id, mode: 'following' } })}>
             <Text style={styles.statValue}>{stats.followingCount}</Text>
             <Text style={styles.statLabel}>Siguiendo</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard} activeOpacity={0.7} onPress={() => router.push({ pathname: '/followers/[id]', params: { id: user.id, mode: 'followers' } })}>
             <Text style={styles.statValue}>{stats.followersCount}</Text>
             <Text style={styles.statLabel}>Seguidores</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{user.matchesPlayed}</Text>
