@@ -67,6 +67,7 @@ function InnerLayout() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="profile/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="notifications/index" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="match/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       {!isAuthenticated && <Redirect href="/auth/login" />}

@@ -15,7 +15,7 @@ public interface PostRepository extends JpaRepository<Post, String> {
     List<Post> findByUserIdOrderByCreatedAtDesc(String userId);
     long countByUserId(String userId);
 
-    @Query("SELECT p FROM Post p WHERE p.user.id IN " +
+    @Query("SELECT p FROM Post p JOIN p.user pu WHERE pu.id IN " +
            "(SELECT f.id FROM User u JOIN u.following f WHERE u.id = :userId) " +
            "ORDER BY p.createdAt DESC")
     Page<Post> findByFollowing(@Param("userId") String userId, Pageable pageable);

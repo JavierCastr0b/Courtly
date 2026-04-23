@@ -12,8 +12,7 @@ import { matchesApi } from '@/src/api/matches';
 import { postsApi } from '@/src/api/posts';
 import { usersApi } from '@/src/api/users';
 import { invitationsApi } from '@/src/api/invitations';
-import { challengesApi } from '@/src/api/challenges';
-import { Match, Post, User, Challenge, Invitation } from '@/src/types';
+import { Match, Post, User, Invitation } from '@/src/types';
 import { Avatar } from '@/src/components/Avatar';
 import { MatchCard } from '@/src/components/MatchCard';
 import { PostCard } from '@/src/components/PostCard';
@@ -44,20 +43,19 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [m, p, fp, u, inv, ch, following] = await Promise.all([
+    const [m, p, fp, u, inv, following] = await Promise.all([
       matchesApi.getAll().catch(() => [] as Match[]),
       postsApi.getFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       postsApi.getFollowingFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       usersApi.search('').catch(() => [] as User[]),
       invitationsApi.getPending().catch(() => [] as Invitation[]),
-      challengesApi.getMine().catch(() => [] as Challenge[]),
       usersApi.getFollowing().catch(() => [] as string[]),
     ]);
     setMatches(m);
     setPosts(p.content.slice(0, 10));
     setFollowingPosts(fp.content);
     setSuggestions(u.filter(s => s.id !== user?.id).slice(0, 5));
-    setNotifCount(inv.length + ch.filter(c => c.status === 'PENDING').length);
+    setNotifCount(inv.length);
     setFollowedIds(new Set(following));
   }, [user?.id]);
 
@@ -189,7 +187,7 @@ export default function HomeScreen() {
                     <Text style={styles.sectionTitle}>Publicaciones</Text>
                   </View>
                   {posts.map(post => (
-                    <PostCard key={post.id} post={post} onJoin={p => setInviteTarget(p.user)} />
+                    <PostCard key={post.id} post={post} />
                   ))}
                 </View>
               )}
@@ -210,7 +208,7 @@ export default function HomeScreen() {
               {followingPosts.length > 0 ? (
                 <View style={styles.section}>
                   {followingPosts.map(post => (
-                    <PostCard key={post.id} post={post} onJoin={p => setInviteTarget(p.user)} />
+                    <PostCard key={post.id} post={post} />
                   ))}
                 </View>
               ) : (

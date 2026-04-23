@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Match } from '../types';
-import { colors, levelColor } from '../theme/colors';
+import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
 import { Button } from './Button';
@@ -14,13 +15,15 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
+  const router = useRouter();
   if (!match) return null;
   const spotsLeft = match.spotsLeft ?? 0;
+  const isFull = spotsLeft === 0;
   const urgency = spotsLeft === 1;
 
   if (compact) {
     return (
-      <TouchableOpacity activeOpacity={0.8} style={styles.compactCard}>
+      <TouchableOpacity activeOpacity={0.8} style={styles.compactCard} onPress={() => router.push(`/match/${match.id}`)}>
         <View style={styles.compactHeader}>
           <Text style={styles.compactCourt} numberOfLines={1}>{match.court?.name ?? match.customLocation ?? '—'}</Text>
           <Tag label={match.level} variant="level" level={match.level} />
@@ -38,11 +41,12 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           </View>
         </View>
         <Button
-          label="Unirme"
-          variant="primary"
+          label={isFull ? 'Completo' : 'Unirme'}
+          variant={isFull ? 'secondary' : 'primary'}
           size="sm"
           fullWidth
-          onPress={() => onJoin?.(match)}
+          disabled={isFull}
+          onPress={() => !isFull && onJoin?.(match)}
           style={{ marginTop: 10 }}
         />
       </TouchableOpacity>
@@ -50,7 +54,7 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
   }
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => router.push(`/match/${match.id}`)}>
       <View style={styles.header}>
         <Avatar name={match.organizer.name} size={40} />
         <View style={styles.headerInfo}>
@@ -94,13 +98,14 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
       </View>
 
       <Button
-        label="Unirme al partido"
-        variant="primary"
+        label={isFull ? 'Partido completo' : 'Unirme al partido'}
+        variant={isFull ? 'secondary' : 'primary'}
         fullWidth
-        onPress={() => onJoin?.(match)}
+        disabled={isFull}
+        onPress={() => !isFull && onJoin?.(match)}
         style={{ marginTop: 14 }}
       />
-    </View>
+    </TouchableOpacity>
   );
 }
 

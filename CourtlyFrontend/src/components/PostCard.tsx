@@ -5,15 +5,12 @@ import { Post } from '../types';
 import { postsApi } from '../api/posts';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
-import { Tag } from './Tag';
-import { Button } from './Button';
 
 interface PostCardProps {
   post: Post;
-  onJoin?: (post: Post) => void;
 }
 
-export function PostCard({ post, onJoin }: PostCardProps) {
+export function PostCard({ post }: PostCardProps) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
 
@@ -74,13 +71,6 @@ export function PostCard({ post, onJoin }: PostCardProps) {
           />
           <Text style={[styles.likeCount, liked && { color: '#FF3B30' }]}>{likesCount}</Text>
         </TouchableOpacity>
-        <Button
-          label="Unirme"
-          variant="primary"
-          size="sm"
-          onPress={() => onJoin?.(post)}
-          style={{ paddingHorizontal: 22 }}
-        />
       </View>
     </View>
   );

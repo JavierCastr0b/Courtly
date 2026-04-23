@@ -7,47 +7,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
-import { Invitation, Challenge } from '@/src/types';
+import { Invitation } from '@/src/types';
 import { invitationsApi } from '@/src/api/invitations';
-import { challengesApi } from '@/src/api/challenges';
 import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      invitationsApi.getPending().catch(() => [] as Invitation[]),
-      challengesApi.getMine().catch(() => [] as Challenge[]),
-    ]).then(([inv, ch]) => {
-      setInvitations(inv);
-      setChallenges(ch.filter(c => c.status === 'PENDING'));
-    }).finally(() => setLoading(false));
+    invitationsApi.getPending()
+      .then(setInvitations)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleAcceptInv = (id: string) => {
+  const handleAccept = (id: string) => {
     invitationsApi.accept(id)
       .then(() => setInvitations(prev => prev.filter(i => i.id !== id)))
       .catch(e => Alert.alert('Error', e.message));
   };
 
-  const handleRejectInv = (id: string) => {
+  const handleReject = (id: string) => {
     invitationsApi.reject(id)
       .then(() => setInvitations(prev => prev.filter(i => i.id !== id)))
       .catch(e => Alert.alert('Error', e.message));
   };
-
-  const handleAcceptChallenge = (id: string) => {
-    challengesApi.accept(id)
-      .then(() => setChallenges(prev => prev.filter(c => c.id !== id)))
-      .catch(e => Alert.alert('Error', e.message));
-  };
-
-  const total = invitations.length + challenges.length;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -63,74 +50,40 @@ export default function NotificationsScreen() {
         <View style={styles.loader}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
-      ) : total === 0 ? (
+      ) : invitations.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>Sin notificaciones</Text>
-          <Text style={styles.emptyText}>Aquí verás invitaciones y retos pendientes.</Text>
+          <Text style={styles.emptyText}>Aquí verás las invitaciones pendientes.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-          {invitations.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Invitaciones pendientes</Text>
-              {invitations.map(inv => (
-                <View key={inv.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <Avatar name={inv.fromUser.name} size={42} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardName}>{inv.fromUser.name}</Text>
-                      <View style={styles.metaRow}>
-                        <Ionicons name="tennisball-outline" size={12} color={colors.textSecondary} />
-                        <Text style={styles.metaText}>{inv.court?.name ?? inv.customLocation ?? '—'}</Text>
-                      </View>
-                      <View style={styles.metaRow}>
-                        <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
-                        <Text style={styles.metaText}>{inv.date} · {inv.time}</Text>
-                      </View>
-                      {inv.message ? (
-                        <Text style={styles.message}>"{inv.message}"</Text>
-                      ) : null}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invitaciones pendientes</Text>
+            {invitations.map(inv => (
+              <View key={inv.id} style={styles.card}>
+                <View style={styles.cardTop}>
+                  <Avatar name={inv.fromUser.name} size={42} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardName}>{inv.fromUser.name}</Text>
+                    <View style={styles.metaRow}>
+                      <Ionicons name="tennisball-outline" size={12} color={colors.textSecondary} />
+                      <Text style={styles.metaText}>{inv.court?.name ?? inv.customLocation ?? '—'}</Text>
                     </View>
-                  </View>
-                  <View style={styles.actions}>
-                    <Button label="Aceptar" variant="primary" size="sm" onPress={() => handleAcceptInv(inv.id)} style={{ flex: 1 }} />
-                    <Button label="Rechazar" variant="outline" size="sm" onPress={() => handleRejectInv(inv.id)} style={{ flex: 1 }} />
+                    <View style={styles.metaRow}>
+                      <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+                      <Text style={styles.metaText}>{inv.date} · {inv.time}</Text>
+                    </View>
+                    {inv.message ? <Text style={styles.message}>"{inv.message}"</Text> : null}
                   </View>
                 </View>
-              ))}
-            </View>
-          )}
-
-          {challenges.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Retos pendientes</Text>
-              {challenges.map(ch => (
-                <View key={ch.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <Avatar name={ch.challenger.name} size={42} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardName}>{ch.challenger.name} te retó</Text>
-                      <Text style={styles.challengeDesc}>{ch.description}</Text>
-                      <View style={styles.metaRow}>
-                        <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-                        <Text style={styles.metaText}>Hasta {ch.deadline}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <Button
-                    label="Aceptar reto"
-                    variant="cta"
-                    fullWidth
-                    size="sm"
-                    onPress={() => handleAcceptChallenge(ch.id)}
-                    style={{ marginTop: 4 }}
-                  />
+                <View style={styles.actions}>
+                  <Button label="Aceptar" variant="primary" size="sm" onPress={() => handleAccept(inv.id)} style={{ flex: 1 }} />
+                  <Button label="Rechazar" variant="outline" size="sm" onPress={() => handleReject(inv.id)} style={{ flex: 1 }} />
                 </View>
-              ))}
-            </View>
-          )}
+              </View>
+            ))}
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -162,6 +115,5 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
   metaText: { color: colors.textSecondary, fontSize: 12 },
   message: { color: colors.primary, fontSize: 12, fontStyle: 'italic', marginTop: 4 },
-  challengeDesc: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
   actions: { flexDirection: 'row', gap: 8 },
 });

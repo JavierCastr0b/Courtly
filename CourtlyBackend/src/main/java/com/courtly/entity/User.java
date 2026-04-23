@@ -11,6 +11,7 @@ import java.util.*;
 @Entity
 @Table(name = "users")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EqualsAndHashCode(of = "id")
 public class User implements UserDetails {
 
     @Id

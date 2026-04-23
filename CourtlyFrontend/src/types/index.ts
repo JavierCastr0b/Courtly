@@ -1,5 +1,4 @@
 export type Level = 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO';
-export type ChallengeStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED';
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 export interface User {
@@ -64,17 +63,6 @@ export interface Invitation {
   time: string;
   message: string | null;
   status: InvitationStatus;
-}
-
-export interface Challenge {
-  id: string;
-  challenger: User;
-  challenged: User;
-  description: string;
-  deadline: string;
-  status: ChallengeStatus;
-  challengerScore: string | null;
-  challengedScore: string | null;
 }
 
 export interface Club {
