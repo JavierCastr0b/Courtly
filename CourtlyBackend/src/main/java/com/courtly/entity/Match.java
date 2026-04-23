@@ -21,6 +21,8 @@ public class Match {
     @JoinColumn(name = "court_id")
     private Court court;
 
+    private String sportType;
+
     private String customLocation;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)

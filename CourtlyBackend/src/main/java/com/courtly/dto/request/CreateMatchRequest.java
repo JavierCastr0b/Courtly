@@ -12,6 +12,7 @@ import java.time.LocalTime;
 @Data
 public class CreateMatchRequest {
     private String courtId;
+    private String sportType;
     private String customLocation;
     @NotNull private LocalDate date;
     @NotNull private LocalTime time;

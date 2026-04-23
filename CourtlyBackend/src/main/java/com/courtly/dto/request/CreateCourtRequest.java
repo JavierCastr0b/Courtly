@@ -10,6 +10,7 @@ public class CreateCourtRequest {
     @NotBlank private String address;
     @NotNull private Double latitude;
     @NotNull private Double longitude;
+    private String courtType;
     private String surface;
     private int totalCourts;
 }

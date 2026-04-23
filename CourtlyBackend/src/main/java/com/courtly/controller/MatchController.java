@@ -50,6 +50,7 @@ public class MatchController {
 
         Match match = Match.builder()
                 .court(court)
+                .sportType(req.getSportType())
                 .customLocation(req.getCustomLocation())
                 .organizer(user)
                 .date(req.getDate())

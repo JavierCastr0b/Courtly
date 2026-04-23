@@ -29,6 +29,12 @@ public class PostController {
         return postRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 
+    @GetMapping("/following")
+    public Page<Post> getFollowingFeed(@PageableDefault(size = 20) Pageable pageable,
+                                       @AuthenticationPrincipal User user) {
+        return postRepository.findByFollowing(user.getId(), pageable);
+    }
+
     @GetMapping("/user/{userId}")
     public List<Post> getByUser(@PathVariable String userId) {
         return postRepository.findByUserIdOrderByCreatedAtDesc(userId);

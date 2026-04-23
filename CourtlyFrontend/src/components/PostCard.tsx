@@ -40,7 +40,6 @@ export function PostCard({ post, onJoin }: PostCardProps) {
             <Text style={styles.metaText}>{post.createdAt}</Text>
           </View>
         </View>
-        {post.level ? <Tag label={post.level} variant="level" /> : null}
       </View>
 
       <Text style={styles.title}>{post.title}</Text>

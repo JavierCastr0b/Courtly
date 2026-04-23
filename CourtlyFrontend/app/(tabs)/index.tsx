@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator,
+  StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,33 +20,63 @@ import { PostCard } from '@/src/components/PostCard';
 import { Button } from '@/src/components/Button';
 import { InviteModal } from '@/src/components/InviteModal';
 
+type Tab = 'recomendado' | 'siguiendo' | 'partidos';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'recomendado', label: 'Recomendado' },
+  { key: 'siguiendo', label: 'Siguiendo' },
+  { key: 'partidos', label: 'Partidos' },
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<Tab>('recomendado');
   const [matches, setMatches] = useState<Match[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [inviteTarget, setInviteTarget] = useState<User | null>(null);
   const [notifCount, setNotifCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
+  const loadData = useCallback(async () => {
+    const [m, p, fp, u, inv, ch, following] = await Promise.all([
       matchesApi.getAll().catch(() => [] as Match[]),
       postsApi.getFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
+      postsApi.getFollowingFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       usersApi.search('').catch(() => [] as User[]),
       invitationsApi.getPending().catch(() => [] as Invitation[]),
       challengesApi.getMine().catch(() => [] as Challenge[]),
       usersApi.getFollowing().catch(() => [] as string[]),
-    ]).then(([m, p, u, inv, ch, following]) => {
-      setMatches(m.slice(0, 5));
-      setPosts(p.content.slice(0, 10));
-      setSuggestions(u.filter(s => s.id !== user?.id).slice(0, 5));
-      setNotifCount(inv.length + ch.filter(c => c.status === 'PENDING').length);
-      setFollowedIds(new Set(following));
-    }).finally(() => setLoading(false));
-  }, []);
+    ]);
+    setMatches(m);
+    setPosts(p.content.slice(0, 10));
+    setFollowingPosts(fp.content);
+    setSuggestions(u.filter(s => s.id !== user?.id).slice(0, 5));
+    setNotifCount(inv.length + ch.filter(c => c.status === 'PENDING').length);
+    setFollowedIds(new Set(following));
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData().finally(() => setRefreshing(false));
+  }, [loadData]);
+
+  const handleFollow = (targetId: string) => {
+    const isFollowed = followedIds.has(targetId);
+    setFollowedIds(prev => { const s = new Set(prev); isFollowed ? s.delete(targetId) : s.add(targetId); return s; });
+    (isFollowed ? usersApi.unfollow(targetId) : usersApi.follow(targetId)).catch(() => {
+      setFollowedIds(prev => { const s = new Set(prev); isFollowed ? s.add(targetId) : s.delete(targetId); return s; });
+    });
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -67,92 +97,156 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Tab selector */}
+      <View style={styles.tabBar}>
+        {TABS.map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-          {matches.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <View style={styles.sectionIcon}>
-                    <Ionicons name="flash" size={14} color={colors.ctaHighlight} />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        >
+          {/* RECOMENDADO */}
+          {activeTab === 'recomendado' && (
+            <>
+              {matches.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionTitleRow}>
+                      <View style={styles.sectionIcon}>
+                        <Ionicons name="flash" size={14} color={colors.ctaHighlight} />
+                      </View>
+                      <Text style={styles.sectionTitle}>Partidos sugeridos</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/mapas')}>
+                      <Text style={styles.seeAll}>Ver todo</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.sectionTitle}>Partidos sugeridos</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                    {matches.slice(0, 5).map(match => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        compact
+                        onJoin={m => matchesApi.join(m.id)
+                          .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
+                          .catch(() => {})
+                        }
+                      />
+                    ))}
+                  </ScrollView>
                 </View>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/mapas')}>
-                  <Text style={styles.seeAll}>Ver todo</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    compact
-                    onJoin={(m) => matchesApi.join(m.id)
-                      .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
-                      .catch(() => {})
-                    }
-                  />
-                ))}
-              </ScrollView>
-            </View>
+              )}
+
+              {suggestions.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>A quién seguir</Text>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/grupos')}>
+                      <Text style={styles.seeAll}>Ver todo</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+                    {suggestions.map(u => (
+                      <TouchableOpacity key={u.id} style={styles.followCard} onPress={() => router.push(`/profile/${u.id}`)} activeOpacity={0.8}>
+                        <Avatar name={u.name} size={52} available={u.available} />
+                        <Text style={styles.followName} numberOfLines={1}>{u.name.split(' ')[0]}</Text>
+                        <Text style={styles.followLevel}>{u.level}</Text>
+                        <Button
+                          label={followedIds.has(u.id) ? 'Siguiendo' : 'Seguir'}
+                          variant={followedIds.has(u.id) ? 'secondary' : 'outline'}
+                          size="sm"
+                          onPress={() => handleFollow(u.id)}
+                          style={{ marginTop: 8 }}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {posts.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Publicaciones</Text>
+                  </View>
+                  {posts.map(post => (
+                    <PostCard key={post.id} post={post} onJoin={p => setInviteTarget(p.user)} />
+                  ))}
+                </View>
+              )}
+
+              {matches.length === 0 && posts.length === 0 && (
+                <View style={styles.empty}>
+                  <Ionicons name="tennisball-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>Todo listo</Text>
+                  <Text style={styles.emptyText}>Crea un partido o una publicación para empezar.</Text>
+                </View>
+              )}
+            </>
           )}
 
-          {suggestions.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>A quién seguir</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/grupos')}>
-                  <Text style={styles.seeAll}>Ver todo</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {suggestions.map((u) => (
-                  <TouchableOpacity key={u.id} style={styles.followCard} onPress={() => router.push(`/profile/${u.id}`)} activeOpacity={0.8}>
-                    <Avatar name={u.name} size={52} available={u.available} />
-                    <Text style={styles.followName} numberOfLines={1}>{u.name.split(' ')[0]}</Text>
-                    <Text style={styles.followLevel}>{u.level}</Text>
-                    <Button
-                      label={followedIds.has(u.id) ? 'Siguiendo' : 'Seguir'}
-                      variant={followedIds.has(u.id) ? 'secondary' : 'outline'}
-                      size="sm"
-                      onPress={() => {
-                        const isFollowed = followedIds.has(u.id);
-                        setFollowedIds(prev => { const s = new Set(prev); isFollowed ? s.delete(u.id) : s.add(u.id); return s; });
-                        (isFollowed ? usersApi.unfollow(u.id) : usersApi.follow(u.id)).catch(() => {
-                          setFollowedIds(prev => { const s = new Set(prev); isFollowed ? s.add(u.id) : s.delete(u.id); return s; });
-                        });
-                      }}
-                      style={{ marginTop: 8 }}
+          {/* SIGUIENDO */}
+          {activeTab === 'siguiendo' && (
+            <>
+              {followingPosts.length > 0 ? (
+                <View style={styles.section}>
+                  {followingPosts.map(post => (
+                    <PostCard key={post.id} post={post} onJoin={p => setInviteTarget(p.user)} />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>Sin actividad</Text>
+                  <Text style={styles.emptyText}>Sigue a jugadores para ver sus publicaciones aquí.</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {/* PARTIDOS */}
+          {activeTab === 'partidos' && (
+            <>
+              {matches.length > 0 ? (
+                <View style={[styles.section, { paddingHorizontal: 18 }]}>
+                  {matches.map(match => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      onJoin={m => matchesApi.join(m.id)
+                        .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
+                        .catch(() => {})
+                      }
                     />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {posts.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Tu feed</Text>
-              </View>
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} onJoin={(p) => setInviteTarget(p.user)} />
-              ))}
-            </View>
-          )}
-
-          {!loading && matches.length === 0 && posts.length === 0 && (
-            <View style={styles.empty}>
-              <Ionicons name="tennisball-outline" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyTitle}>Todo listo</Text>
-              <Text style={styles.emptyText}>Crea un partido o una publicación para empezar.</Text>
-            </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <Ionicons name="tennisball-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>Sin partidos</Text>
+                  <Text style={styles.emptyText}>No hay partidos disponibles por ahora.</Text>
+                </View>
+              )}
+            </>
           )}
         </ScrollView>
       )}
@@ -161,7 +255,7 @@ export default function HomeScreen() {
         visible={inviteTarget !== null}
         user={inviteTarget}
         onClose={() => setInviteTarget(null)}
-        onSend={(data) => {
+        onSend={data => {
           if (!inviteTarget) return;
           invitationsApi.create({
             toUserId: inviteTarget.id,
@@ -192,6 +286,22 @@ const styles = StyleSheet.create({
     width: 16, height: 16, alignItems: 'center', justifyContent: 'center',
   },
   notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 18, paddingVertical: 10, gap: 8,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  tab: {
+    paddingHorizontal: 16, paddingVertical: 7,
+    borderRadius: 20, backgroundColor: colors.secondary,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  tabLabelActive: { color: '#fff' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 32 },

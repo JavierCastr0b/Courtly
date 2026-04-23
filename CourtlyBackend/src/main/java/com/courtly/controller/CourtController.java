@@ -1,5 +1,4 @@
 package com.courtly.controller;
-
 import com.courtly.dto.request.CreateCourtRequest;
 import com.courtly.entity.Court;
 import com.courtly.entity.Match;
@@ -49,6 +48,7 @@ public class CourtController {
                 .address(req.getAddress())
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
+                .courtType(req.getCourtType())
                 .surface(req.getSurface())
                 .totalCourts(req.getTotalCourts())
                 .build();

@@ -18,10 +18,11 @@ public class Court {
     @Column(nullable = false)
     private String address;
 
+    private String courtType;
+    private String surface;
+
     private double latitude;
     private double longitude;
-
-    private String surface;
 
     @Column(nullable = false)
     private int totalCourts;
