@@ -22,6 +22,7 @@ public class Match {
     private Court court;
 
     private String sportType;
+    private String matchType;
 
     private String customLocation;
 

@@ -21,22 +21,20 @@ export const colors = {
   shimmer: '#262D3A',
 };
 
-export type LevelType = 'Principiante' | 'Intermedio' | 'Avanzado';
+export type LevelType = 'Iniciación' | 'Intermedio' | 'Avanzado' | 'Profesional';
 
 export const levelColor: Record<string, string> = {
-  Principiante: colors.beginner,
-  Intermedio: colors.intermediate,
-  Avanzado: colors.advanced,
+  INICIACION:  '#52D68A',
   PRINCIPIANTE: colors.beginner,
   INTERMEDIO: colors.intermediate,
   AVANZADO: colors.advanced,
+  PROFESIONAL: '#9B59B6',
 };
 
 export const levelDisplay: Record<string, string> = {
-  PRINCIPIANTE: 'Principiante',
-  INTERMEDIO: 'Intermedio',
-  AVANZADO: 'Avanzado',
-  Principiante: 'Principiante',
-  Intermedio: 'Intermedio',
-  Avanzado: 'Avanzado',
+  INICIACION:  '5ta',
+  PRINCIPIANTE: '4ta',
+  INTERMEDIO: '3ra',
+  AVANZADO: '2da',
+  PROFESIONAL: '1ra',
 };

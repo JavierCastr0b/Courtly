@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/matches")
@@ -51,6 +52,7 @@ public class MatchController {
         Match match = Match.builder()
                 .court(court)
                 .sportType(req.getSportType())
+                .matchType(req.getMatchType())
                 .customLocation(req.getCustomLocation())
                 .organizer(user)
                 .date(req.getDate())
@@ -64,11 +66,13 @@ public class MatchController {
     }
 
     @PostMapping("/{id}/join")
-    public ResponseEntity<Match> join(@PathVariable String id,
-                                      @AuthenticationPrincipal User user) {
+    public ResponseEntity<?> join(@PathVariable String id,
+                                  @AuthenticationPrincipal User user) {
         Match match = matchRepository.findById(id).orElseThrow();
         if (match.getSpotsLeft() <= 0)
             return ResponseEntity.badRequest().build();
+        if (user.getLevel().ordinal() < match.getLevel().ordinal())
+            return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
         match.getParticipants().add(user);
         return ResponseEntity.ok(matchRepository.save(match));
     }

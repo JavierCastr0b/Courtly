@@ -29,10 +29,12 @@ const MATCH_TYPES: { value: MatchType; label: string; spots: number; icon: strin
   { value: 'DOBLES', label: 'Dobles', spots: 3, icon: 'people-outline' },
 ];
 
-const LEVELS: { value: Level; label: string }[] = [
-  { value: 'PRINCIPIANTE', label: 'Principiante' },
-  { value: 'INTERMEDIO', label: 'Intermedio' },
-  { value: 'AVANZADO', label: 'Avanzado' },
+const LEVELS: { value: Level; label: string; sub: string }[] = [
+  { value: 'INICIACION',   label: 'Libre',  sub: 'Cualquier nivel puede unirse' },
+  { value: 'PRINCIPIANTE', label: '4ta',    sub: '4ta categoría o superior' },
+  { value: 'INTERMEDIO',   label: '3ra',    sub: '3ra categoría o superior' },
+  { value: 'AVANZADO',     label: '2da',    sub: '2da categoría o superior' },
+  { value: 'PROFESIONAL',  label: '1ra',    sub: 'Solo 1ra categoría' },
 ];
 const TIME_SLOTS = ['6:00 AM', '7:00 AM', '8:00 AM', '5:00 PM', '6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo', 'Lunes'];
@@ -69,7 +71,7 @@ export default function RegistrarScreen() {
   const [mode, setMode] = useState<Mode>('match');
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<Level>('INTERMEDIO');
+  const [selectedLevel, setSelectedLevel] = useState<Level>('INICIACION');
   const [selectedDate, setSelectedDate] = useState('Hoy');
   const [selectedTime, setSelectedTime] = useState('7:00 PM');
   const [matchType, setMatchType] = useState<MatchType>('DOBLES');
@@ -120,7 +122,6 @@ export default function RegistrarScreen() {
           : courts.find(c => c.id === selectedCourt)?.name;
         await postsApi.create({
           title: postText,
-          level: selectedLevel,
           location: postLocation,
         });
         Alert.alert('¡Publicación creada!', 'Tu publicación es visible en el feed.', [
@@ -248,21 +249,26 @@ export default function RegistrarScreen() {
                 </View>
               </ScrollView>
 
-              <Text style={styles.sectionLabel}>Nivel</Text>
-              <View style={styles.levelRow}>
-                {LEVELS.map((lvl) => (
-                  <TouchableOpacity
-                    key={lvl.value}
-                    onPress={() => setSelectedLevel(lvl.value)}
-                    style={[styles.levelCard, selectedLevel === lvl.value && styles.levelCardActive]}
-                    activeOpacity={0.75}
-                  >
-                    <Tag label={lvl.value} variant="level" />
-                    {selectedLevel === lvl.value && (
-                      <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginTop: 6 }} />
-                    )}
-                  </TouchableOpacity>
-                ))}
+              <Text style={styles.sectionLabel}>Nivel mínimo para unirse</Text>
+              <View style={styles.levelList}>
+                {LEVELS.map((lvl) => {
+                  const active = selectedLevel === lvl.value;
+                  return (
+                    <TouchableOpacity
+                      key={lvl.value}
+                      onPress={() => setSelectedLevel(lvl.value)}
+                      style={[styles.levelRow, active && styles.levelRowActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Tag label={lvl.value} variant="level" />
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.levelRowLabel, active && { color: colors.textPrimary }]}>{lvl.label}</Text>
+                        <Text style={styles.levelRowSub}>{lvl.sub}</Text>
+                      </View>
+                      {active && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <Text style={styles.sectionLabel}>Modalidad</Text>
@@ -283,15 +289,27 @@ export default function RegistrarScreen() {
 
               <Text style={styles.sectionLabel}>Jugadores adicionales</Text>
               <View style={styles.stepperRow}>
-                <View style={styles.stepper}>
-                  <TouchableOpacity onPress={() => setPlayers((p) => Math.max(1, p - 1))} style={styles.stepperBtn}>
-                    <Ionicons name="remove" size={20} color={colors.primary} />
-                  </TouchableOpacity>
-                  <Text style={styles.stepperValue}>{players}</Text>
-                  <TouchableOpacity onPress={() => setPlayers((p) => Math.min(4, p + 1))} style={styles.stepperBtn}>
-                    <Ionicons name="add" size={20} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
+                {matchType === 'SINGLES' ? (
+                  <View style={styles.stepper}>
+                    <View style={[styles.stepperBtn, { opacity: 0.3 }]}>
+                      <Ionicons name="remove" size={20} color={colors.primary} />
+                    </View>
+                    <Text style={styles.stepperValue}>1</Text>
+                    <View style={[styles.stepperBtn, { opacity: 0.3 }]}>
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.stepper}>
+                    <TouchableOpacity onPress={() => setPlayers((p) => Math.max(1, p - 1))} style={styles.stepperBtn}>
+                      <Ionicons name="remove" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.stepperValue}>{players}</Text>
+                    <TouchableOpacity onPress={() => setPlayers((p) => Math.min(3, p + 1))} style={styles.stepperBtn}>
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <Text style={styles.stepperHint}>+ tú = <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{players + 1} total</Text></Text>
               </View>
 
@@ -338,19 +356,6 @@ export default function RegistrarScreen() {
                 multiline
                 autoFocus
               />
-
-              <Text style={styles.sectionLabel}>Etiqueta de nivel</Text>
-              <View style={styles.levelRow}>
-                {LEVELS.map((lvl) => (
-                  <TouchableOpacity
-                    key={lvl.value}
-                    onPress={() => setSelectedLevel(lvl.value)}
-                    style={[styles.levelCard, selectedLevel === lvl.value && styles.levelCardActive]}
-                  >
-                    <Tag label={lvl.value} variant="level" />
-                  </TouchableOpacity>
-                ))}
-              </View>
 
               <Text style={styles.sectionLabel}>Ubicación (opcional)</Text>
               {courts.map((c) => (
@@ -433,9 +438,19 @@ const styles = StyleSheet.create({
   pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
   pillText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
   pillTextActive: { color: colors.primary, fontWeight: '600' },
-  levelRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  levelCard: { flex: 1, backgroundColor: colors.secondary, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-  levelCardActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  levelList: { gap: 6, marginBottom: 20 },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    padding: 13,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  levelRowActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  levelRowLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  levelRowSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',

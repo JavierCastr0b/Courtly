@@ -15,6 +15,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -64,6 +66,11 @@ public class PostController {
             return ResponseEntity.status(403).build();
         postRepository.delete(post);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/liked")
+    public Set<String> getLikedPostIds(@AuthenticationPrincipal User user) {
+        return postRepository.findLikedPostIdsByUser(user.getId());
     }
 
     @PostMapping("/{id}/like")

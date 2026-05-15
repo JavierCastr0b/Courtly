@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
+import { Tag } from '@/src/components/Tag';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
 import { usersApi } from '@/src/api/users';
@@ -72,6 +73,7 @@ export default function PerfilScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{user.name}</Text>
             <Text style={styles.profileUsername}>@{user.username}</Text>
+            <Tag label={user.level} variant="level" style={{ marginTop: 4 }} />
             {user.location ? (
               <View style={styles.profileMeta}>
                 <Ionicons name="location-outline" size={13} color={colors.textMuted} />

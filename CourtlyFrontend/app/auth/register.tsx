@@ -14,7 +14,16 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/context/AuthContext';
-import { colors } from '@/src/theme/colors';
+import { colors, levelColor } from '@/src/theme/colors';
+import { Level } from '@/src/types';
+
+const LEVELS: { value: Level; label: string; cat: string }[] = [
+  { value: 'INICIACION',   label: 'Iniciación',  cat: '5ta categoría' },
+  { value: 'PRINCIPIANTE', label: 'Principiante', cat: '4ta categoría' },
+  { value: 'INTERMEDIO',   label: 'Intermedio',  cat: '3ra categoría' },
+  { value: 'AVANZADO',     label: 'Avanzado',    cat: '2da categoría' },
+  { value: 'PROFESIONAL',  label: 'Profesional', cat: '1ra categoría' },
+];
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -24,6 +33,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<Level>('PRINCIPIANTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,7 +49,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await register(name, username, email, password);
+      await register(name, username, email, password, selectedLevel);
     } catch {
       setError('Error al crear la cuenta. Intenta de nuevo.');
     } finally {
@@ -114,6 +124,25 @@ export default function RegisterScreen() {
               onChangeText={setConfirmPassword}
               secureTextEntry
             />
+
+            <Text style={styles.levelLabel}>¿Cuál es tu nivel de juego?</Text>
+            <View style={styles.levelGrid}>
+              {LEVELS.map((l) => {
+                const active = selectedLevel === l.value;
+                const color = levelColor[l.value];
+                return (
+                  <TouchableOpacity
+                    key={l.value}
+                    onPress={() => setSelectedLevel(l.value)}
+                    style={[styles.levelCard, active && { borderColor: color, backgroundColor: color + '18' }]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.levelName, active && { color }]}>{l.label}</Text>
+                    <Text style={styles.levelSub}>{l.cat}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -233,5 +262,35 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 15,
     fontWeight: '700',
+  },
+  levelLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  levelGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  levelCard: {
+    width: '47%',
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 12,
+    gap: 3,
+  },
+  levelName: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  levelSub: {
+    color: colors.textMuted,
+    fontSize: 11,
   },
 });

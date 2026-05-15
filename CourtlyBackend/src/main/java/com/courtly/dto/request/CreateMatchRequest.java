@@ -13,10 +13,11 @@ import java.time.LocalTime;
 public class CreateMatchRequest {
     private String courtId;
     private String sportType;
+    private String matchType;
     private String customLocation;
     @NotNull private LocalDate date;
     @NotNull private LocalTime time;
     @NotNull private Level level;
-    @Min(2) @Max(4) private int totalSpots;
+    @Min(2) @Max(5) private int totalSpots;
     private String description;
 }

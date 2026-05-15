@@ -78,6 +78,7 @@ export default function ProfileScreen() {
             <View style={styles.heroInfo}>
               <Text style={styles.name}>{profile.name}</Text>
               <Text style={styles.username}>@{profile.username}</Text>
+              <Tag label={profile.level} variant="level" style={{ marginTop: 4 }} />
               {profile.location ? (
                 <View style={styles.metaRow}>
                   <Ionicons name="location-outline" size={13} color={colors.textMuted} />

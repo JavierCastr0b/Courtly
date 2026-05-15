@@ -7,7 +7,7 @@ import { colors } from '@/src/theme/colors';
 function RegisterIcon({ color, focused }: { color: string; focused: boolean }) {
   return (
     <View style={[styles.registerIcon, focused && styles.registerIconFocused]}>
-      <Ionicons name="add" size={26} color={focused ? '#fff' : colors.textSecondary} />
+      <Ionicons name="add" size={20} color={focused ? '#fff' : colors.textSecondary} />
     </View>
   );
 }
@@ -55,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="registrar"
         options={{
-          title: 'Registrar',
+          title: '',
           tabBarIcon: ({ focused }) => (
             <RegisterIcon color={colors.ctaHighlight} focused={focused} />
           ),
@@ -87,13 +87,13 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   registerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 17,
     backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: -10,
   },
   registerIconFocused: {
     backgroundColor: colors.ctaHighlight,

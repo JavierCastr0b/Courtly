@@ -23,6 +23,7 @@ export default function MatchDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     matchesApi.getById(id)
@@ -38,10 +39,11 @@ export default function MatchDetailScreen() {
 
   const handleJoin = () => {
     if (!match) return;
+    setJoinError(null);
     setJoining(true);
     matchesApi.join(match.id)
       .then(updated => setMatch(updated))
-      .catch(e => Alert.alert('Error', e.message))
+      .catch(e => setJoinError(e.message))
       .finally(() => setJoining(false));
   };
 
@@ -230,16 +232,24 @@ export default function MatchDetailScreen() {
                 style={styles.actionBtn}
               />
             ) : (
-              <Button
-                label={isFull ? 'Partido completo' : 'Unirme al partido'}
-                variant={isFull ? 'secondary' : 'primary'}
-                fullWidth
-                size="lg"
-                disabled={isFull}
-                loading={joining}
-                onPress={handleJoin}
-                style={styles.actionBtn}
-              />
+              <>
+                <Button
+                  label={isFull ? 'Partido completo' : 'Unirme al partido'}
+                  variant={isFull ? 'secondary' : 'primary'}
+                  fullWidth
+                  size="lg"
+                  disabled={isFull}
+                  loading={joining}
+                  onPress={handleJoin}
+                  style={styles.actionBtn}
+                />
+                {!!joinError && (
+                  <View style={styles.joinErrorBox}>
+                    <Ionicons name="alert-circle-outline" size={15} color={colors.ctaHighlight} />
+                    <Text style={styles.joinErrorText}>{joinError}</Text>
+                  </View>
+                )}
+              </>
             )
           )}
 
@@ -254,6 +264,20 @@ export default function MatchDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  joinErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: 20,
+    marginTop: 6,
+    backgroundColor: colors.ctaHighlight + '15',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: colors.ctaHighlight + '40',
+  },
+  joinErrorText: { color: colors.ctaHighlight, fontSize: 12, flex: 1 },
   root: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

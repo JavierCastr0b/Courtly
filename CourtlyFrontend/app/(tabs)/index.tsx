@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/src/theme/colors';
+import { colors, levelDisplay } from '@/src/theme/colors';
 import { useAuth } from '@/src/context/AuthContext';
 import { matchesApi } from '@/src/api/matches';
 import { postsApi } from '@/src/api/posts';
@@ -149,7 +149,6 @@ export default function HomeScreen() {
                         compact
                         onJoin={m => matchesApi.join(m.id)
                           .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
-                          .catch(() => {})
                         }
                       />
                     ))}
@@ -170,7 +169,7 @@ export default function HomeScreen() {
                       <TouchableOpacity key={u.id} style={styles.followCard} onPress={() => router.push(`/profile/${u.id}`)} activeOpacity={0.8}>
                         <Avatar name={u.name} size={52} available={u.available} />
                         <Text style={styles.followName} numberOfLines={1}>{u.name.split(' ')[0]}</Text>
-                        <Text style={styles.followLevel}>{u.level}</Text>
+                        <Text style={styles.followLevel}>{levelDisplay[u.level] ?? u.level}</Text>
                         <Button
                           label={followedIds.has(u.id) ? 'Siguiendo' : 'Seguir'}
                           variant={followedIds.has(u.id) ? 'secondary' : 'outline'}

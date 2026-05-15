@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Set;
 
 public interface PostRepository extends JpaRepository<Post, String> {
 
@@ -19,4 +20,7 @@ public interface PostRepository extends JpaRepository<Post, String> {
            "(SELECT f.id FROM User u JOIN u.following f WHERE u.id = :userId) " +
            "ORDER BY p.createdAt DESC")
     Page<Post> findByFollowing(@Param("userId") String userId, Pageable pageable);
+
+    @Query("SELECT p.id FROM Post p JOIN p.likedBy u WHERE u.id = :userId")
+    Set<String> findLikedPostIdsByUser(@Param("userId") String userId);
 }

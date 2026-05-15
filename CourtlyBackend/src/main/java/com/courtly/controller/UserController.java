@@ -84,4 +84,19 @@ public class UserController {
         List<String> ids = me.getFollowing().stream().map(User::getId).toList();
         return ResponseEntity.ok(ids);
     }
+
+    @GetMapping("/{id}/followers")
+    public ResponseEntity<List<User>> getFollowers(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findFollowers(id));
+    }
+
+    @GetMapping("/{id}/following")
+    public ResponseEntity<List<User>> getFollowing(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findFollowing(id));
+    }
+
+    @GetMapping("/{id}/friends")
+    public ResponseEntity<List<User>> getFriends(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findMutualFriends(id));
+    }
 }

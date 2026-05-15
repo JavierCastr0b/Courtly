@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Match } from '../types';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
 import { Button } from './Button';
@@ -16,10 +17,30 @@ interface MatchCardProps {
 
 export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
   const router = useRouter();
+  const { user: me } = useAuth();
+  const [joinError, setJoinError] = React.useState<string | null>(null);
+  const [joining, setJoining] = React.useState(false);
   if (!match) return null;
   const spotsLeft = match.spotsLeft ?? 0;
   const isFull = spotsLeft === 0;
   const urgency = spotsLeft === 1;
+  const isOrganizer = match.organizer?.id === me?.id;
+  const isParticipant = match.participants?.some(p => p.id === me?.id) ?? false;
+  const canJoin = !isOrganizer && !isParticipant && !isFull;
+
+  const handleJoin = async () => {
+    if (!canJoin || !onJoin) return;
+    setJoinError(null);
+    setJoining(true);
+    try {
+      await onJoin(match);
+    } catch (e: any) {
+      setJoinError(e.message);
+      setTimeout(() => setJoinError(null), 4000);
+    } finally {
+      setJoining(false);
+    }
+  };
 
   if (compact) {
     return (
@@ -41,14 +62,18 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           </View>
         </View>
         <Button
-          label={isFull ? 'Completo' : 'Unirme'}
-          variant={isFull ? 'secondary' : 'primary'}
+          label={isFull ? 'Completo' : !canJoin ? 'Inscrito' : 'Unirme'}
+          variant={canJoin ? 'primary' : 'secondary'}
           size="sm"
           fullWidth
-          disabled={isFull}
-          onPress={() => !isFull && onJoin?.(match)}
+          disabled={!canJoin}
+          loading={joining}
+          onPress={handleJoin}
           style={{ marginTop: 10 }}
         />
+        {!!joinError && (
+          <Text style={styles.joinError} numberOfLines={2}>{joinError}</Text>
+        )}
       </TouchableOpacity>
     );
   }
@@ -98,13 +123,17 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
       </View>
 
       <Button
-        label={isFull ? 'Partido completo' : 'Unirme al partido'}
-        variant={isFull ? 'secondary' : 'primary'}
+        label={isFull ? 'Partido completo' : !canJoin ? 'Ya estás inscrito' : 'Unirme al partido'}
+        variant={canJoin ? 'primary' : 'secondary'}
         fullWidth
-        disabled={isFull}
-        onPress={() => !isFull && onJoin?.(match)}
+        disabled={!canJoin}
+        loading={joining}
+        onPress={handleJoin}
         style={{ marginTop: 14 }}
       />
+      {!!joinError && (
+        <Text style={styles.joinError} numberOfLines={2}>{joinError}</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -202,5 +231,11 @@ const styles = StyleSheet.create({
   metaText: {
     color: colors.textSecondary,
     fontSize: 12,
+  },
+  joinError: {
+    color: colors.ctaHighlight,
+    fontSize: 11,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });
