@@ -42,7 +42,7 @@ class InvitationControllerTest extends BaseControllerTest {
     void setUpData() {
         otherUser = User.builder()
                 .id("user-2").name("Invitado").username("invitado")
-                .email("invitado@test.com").password("encoded").level(Level.PRINCIPIANTE)
+                .email("invitado@test.com").password("encoded").level(Level.TERCERA)
                 .build();
 
         mockCourt = Court.builder()

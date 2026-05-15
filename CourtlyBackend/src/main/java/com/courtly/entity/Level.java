@@ -1,7 +1,10 @@
 package com.courtly.entity;
 
 public enum Level {
-    PRINCIPIANTE,
-    INTERMEDIO,
-    AVANZADO
+    PRIMERA,
+    SEGUNDA,
+    TERCERA,
+    CUARTA,
+    QUINTA,
+    SEXTA
 }

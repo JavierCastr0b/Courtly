@@ -34,6 +34,11 @@ public class MatchController {
         return matchRepository.findByDateGreaterThanEqual(LocalDate.now());
     }
 
+    @GetMapping("/user/{userId}")
+    public List<Match> getByUser(@PathVariable String userId) {
+        return matchRepository.findByOrganizerId(userId);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Match> getById(@PathVariable String id) {
         return matchRepository.findById(id)

@@ -66,9 +66,10 @@ export default function MapasScreen() {
   const handleJoinMatch = (matchId: string) => {
     matchesApi.join(matchId)
       .then(updated => {
+        if (!updated.court) return;
         setCourtMatches(prev => ({
           ...prev,
-          [updated.court.id]: (prev[updated.court.id] ?? []).map(m => m.id === matchId ? updated : m),
+          [updated.court!.id]: (prev[updated.court!.id] ?? []).map(m => m.id === matchId ? updated : m),
         }));
       })
       .catch(e => Alert.alert('Error', e.message));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,6 +31,13 @@ export default function GruposScreen() {
   const [joinedClubs, setJoinedClubs] = useState<Set<string>>(new Set());
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Club creation modal
+  const [showCreateClub, setShowCreateClub] = useState(false);
+  const [clubName, setClubName] = useState('');
+  const [clubDescription, setClubDescription] = useState('');
+  const [clubLocation, setClubLocation] = useState('');
+  const [creatingClub, setCreatingClub] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -68,6 +75,25 @@ export default function GruposScreen() {
         .then(() => setJoinedClubs(prev => new Set([...prev, id])))
         .catch(() => {});
     }
+  };
+
+  const handleCreateClub = () => {
+    if (!clubName.trim()) { Alert.alert('Error', 'El nombre del club es requerido.'); return; }
+    setCreatingClub(true);
+    clubsApi.create({
+      name: clubName.trim(),
+      description: clubDescription.trim() || undefined,
+      location: clubLocation.trim() || undefined,
+    })
+      .then(newClub => {
+        setClubs(prev => [...prev, newClub]);
+        setJoinedClubs(prev => new Set([...prev, newClub.id]));
+        setShowCreateClub(false);
+        setClubName(''); setClubDescription(''); setClubLocation('');
+        Alert.alert('¡Club creado!', `"${newClub.name}" ya está disponible en Courtly.`);
+      })
+      .catch(() => Alert.alert('Error', 'No se pudo crear el club. Intenta de nuevo.'))
+      .finally(() => setCreatingClub(false));
   };
 
   const filteredUsers = users.filter(u =>
@@ -186,11 +212,22 @@ export default function GruposScreen() {
             <Text style={styles.eventsSubtitle}>
               Encuentra entrenamientos, eventos y clubes cerca de ti y convierte tus planes en kilómetros.
             </Text>
-            <Button label="Encuentra tu equipo" variant="primary" size="md" onPress={() => {}} style={{ marginTop: 14 }} />
+            <Button
+              label="Encuentra tu equipo"
+              variant="primary"
+              size="md"
+              onPress={() => setActiveTab('Amigos')}
+              style={{ marginTop: 14 }}
+            />
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Clubes recomendados</Text>
+            {clubs.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>Aún no hay clubes. ¡Crea el primero!</Text>
+              </View>
+            )}
             {clubs.map(club => {
               const joined = joinedClubs.has(club.id);
               return (
@@ -233,7 +270,7 @@ export default function GruposScreen() {
               label="Primeros pasos"
               variant="cta"
               fullWidth
-              onPress={() => Alert.alert('Crear club', 'Crea y gestiona tu club directamente desde la aplicación.')}
+              onPress={() => setShowCreateClub(true)}
               style={{ marginTop: 14 }}
             />
           </View>
@@ -258,6 +295,55 @@ export default function GruposScreen() {
             .catch(e => Alert.alert('Error', e.message));
         }}
       />
+
+      {/* Club creation modal */}
+      <Modal visible={showCreateClub} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreateClub(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContainer}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Crear club</Text>
+            <TouchableOpacity onPress={() => setShowCreateClub(false)}>
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <Text style={styles.modalLabel}>Nombre del club *</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej: Club Pádel Lima Norte"
+              placeholderTextColor={colors.textMuted}
+              value={clubName}
+              onChangeText={setClubName}
+            />
+            <Text style={styles.modalLabel}>Descripción (opcional)</Text>
+            <TextInput
+              style={[styles.modalInput, { minHeight: 80 }]}
+              placeholder="Cuéntanos sobre tu club..."
+              placeholderTextColor={colors.textMuted}
+              value={clubDescription}
+              onChangeText={setClubDescription}
+              multiline
+            />
+            <Text style={styles.modalLabel}>Ubicación (opcional)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Lima, Perú"
+              placeholderTextColor={colors.textMuted}
+              value={clubLocation}
+              onChangeText={setClubLocation}
+            />
+            <Button
+              label="Crear club"
+              variant="cta"
+              fullWidth
+              size="lg"
+              loading={creatingClub}
+              onPress={handleCreateClub}
+              style={{ marginTop: 8, marginBottom: 32 }}
+            />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -331,4 +417,11 @@ const styles = StyleSheet.create({
   },
   eventsTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 8 },
   eventsSubtitle: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  modalContainer: { flex: 1, backgroundColor: colors.background },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginTop: 12 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  modalBody: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  modalLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  modalInput: { backgroundColor: colors.secondary, borderRadius: 10, padding: 14, color: colors.textPrimary, fontSize: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border, textAlignVertical: 'top' },
 });

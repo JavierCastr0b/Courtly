@@ -44,7 +44,7 @@ public abstract class BaseControllerTest {
                 .username("testuser")
                 .email("test@test.com")
                 .password(new BCryptPasswordEncoder().encode("password123"))
-                .level(Level.INTERMEDIO)
+                .level(Level.TERCERA)
                 .build();
 
         when(jwtService.extractUsername(TOKEN)).thenReturn("testuser");

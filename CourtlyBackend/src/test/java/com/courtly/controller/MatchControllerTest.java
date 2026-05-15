@@ -41,7 +41,7 @@ class MatchControllerTest extends BaseControllerTest {
         mockMatch = Match.builder()
                 .id("match-1").court(mockCourt).organizer(mockUser)
                 .date(LocalDate.now().plusDays(1)).time(LocalTime.of(18, 0))
-                .level(Level.INTERMEDIO).totalSpots(4).build();
+                .level(Level.TERCERA).totalSpots(4).build();
     }
 
     @Test
@@ -86,7 +86,7 @@ class MatchControllerTest extends BaseControllerTest {
                                     "courtId": "court-1",
                                     "date": "%s",
                                     "time": "18:00",
-                                    "level": "INTERMEDIO",
+                                    "level": "TERCERA",
                                     "totalSpots": 4
                                 }
                                 """.formatted(LocalDate.now().plusDays(1))))
@@ -109,7 +109,7 @@ class MatchControllerTest extends BaseControllerTest {
         Match fullMatch = Match.builder()
                 .id("match-1").court(mockCourt).organizer(mockUser)
                 .date(LocalDate.now().plusDays(1)).time(LocalTime.of(18, 0))
-                .level(Level.INTERMEDIO).totalSpots(1).build();
+                .level(Level.TERCERA).totalSpots(1).build();
         fullMatch.getParticipants().add(mockUser);
 
         when(matchRepository.findById("match-1")).thenReturn(Optional.of(fullMatch));
@@ -144,7 +144,7 @@ class MatchControllerTest extends BaseControllerTest {
                 .organizer(com.courtly.entity.User.builder()
                         .id("other-user").username("otro").build())
                 .date(LocalDate.now().plusDays(1)).time(LocalTime.of(18, 0))
-                .level(Level.INTERMEDIO).totalSpots(4).build();
+                .level(Level.TERCERA).totalSpots(4).build();
 
         when(matchRepository.findById("match-2")).thenReturn(Optional.of(otherMatch));
 

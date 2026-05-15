@@ -39,6 +39,34 @@ const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo'];
 
 const OTROS_ID = '__otros__';
 
+function resolveDate(label: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (label === 'Hoy') return fmt(now);
+  if (label === 'Mañana') { const d = new Date(now); d.setDate(d.getDate() + 1); return fmt(d); }
+  const dayMap: Record<string, number> = { Lunes: 1, Martes: 2, Miércoles: 3, Jueves: 4, Viernes: 5, Sábado: 6, Domingo: 0 };
+  const target = dayMap[label];
+  if (target !== undefined) {
+    const d = new Date(now);
+    const diff = (target - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return fmt(d);
+  }
+  return fmt(now);
+}
+
+function resolveTime(label: string): string {
+  const match = label.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!match) return '19:00';
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${m}`;
+}
+
 export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps) {
   const [selectedCourt, setSelectedCourt] = useState('');
   const [customLocation, setCustomLocation] = useState('');
@@ -61,8 +89,8 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
     onSend?.({
       court: isOtros ? '' : selectedCourt,
       customLocation: isOtros ? customLocation : '',
-      date: selectedDate,
-      time: selectedTime,
+      date: resolveDate(selectedDate),
+      time: resolveTime(selectedTime),
       players,
       message,
     });

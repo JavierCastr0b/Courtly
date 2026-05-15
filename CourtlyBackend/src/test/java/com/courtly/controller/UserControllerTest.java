@@ -71,7 +71,7 @@ class UserControllerTest extends BaseControllerTest {
     void update_ownProfile_returnsUpdated() throws Exception {
         User updated = User.builder()
                 .id("user-1").name("Nuevo Nombre").username("testuser")
-                .email("test@test.com").password("encoded").level(Level.AVANZADO)
+                .email("test@test.com").password("encoded").level(Level.SEXTA)
                 .build();
         when(userRepository.findById("user-1")).thenReturn(Optional.of(mockUser));
         when(userRepository.save(any())).thenReturn(updated);
@@ -101,7 +101,7 @@ class UserControllerTest extends BaseControllerTest {
     void follow_returnsOk() throws Exception {
         User target = User.builder()
                 .id("user-2").name("Target").username("target")
-                .email("target@test.com").password("encoded").level(Level.PRINCIPIANTE)
+                .email("target@test.com").password("encoded").level(Level.TERCERA)
                 .build();
         when(userRepository.findById("user-1")).thenReturn(Optional.of(mockUser));
         when(userRepository.findById("user-2")).thenReturn(Optional.of(target));
@@ -116,7 +116,7 @@ class UserControllerTest extends BaseControllerTest {
     void unfollow_returnsOk() throws Exception {
         User target = User.builder()
                 .id("user-2").name("Target").username("target")
-                .email("target@test.com").password("encoded").level(Level.PRINCIPIANTE)
+                .email("target@test.com").password("encoded").level(Level.TERCERA)
                 .build();
         when(userRepository.findById("user-1")).thenReturn(Optional.of(mockUser));
         when(userRepository.findById("user-2")).thenReturn(Optional.of(target));

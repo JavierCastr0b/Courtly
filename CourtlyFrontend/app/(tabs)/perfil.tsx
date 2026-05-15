@@ -20,18 +20,13 @@ import { usersApi } from '@/src/api/users';
 import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
 
-const MENU_ITEMS = [
-  { label: 'Estadísticas', icon: 'bar-chart-outline' as const },
-  { label: 'Partidos', icon: 'tennisball-outline' as const },
-  { label: 'Publicaciones', icon: 'document-text-outline' as const },
-  { label: 'Equipamiento', icon: 'bag-handle-outline' as const },
-];
-
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
   const [stats, setStats] = useState({ followersCount: 0, followingCount: 0 });
   const [editVisible, setEditVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editAvailable, setEditAvailable] = useState(false);
@@ -45,6 +40,61 @@ export default function PerfilScreen() {
   }, [user?.id]);
 
   if (!user) return null;
+
+  const openEdit = () => {
+    setEditName(user.name ?? '');
+    setEditUsername(user.username ?? '');
+    setEditBio(user.bio ?? '');
+    setEditLocation(user.location ?? '');
+    setEditAvailable(user.available);
+    setEditVisible(true);
+  };
+
+  const handleSave = () => {
+    if (!editName.trim()) { Alert.alert('Error', 'El nombre no puede estar vacío.'); return; }
+    if (!editUsername.trim()) { Alert.alert('Error', 'El usuario no puede estar vacío.'); return; }
+    setSaving(true);
+    usersApi.update(user.id, {
+      name: editName.trim(),
+      username: editUsername.trim(),
+      bio: editBio || undefined,
+      location: editLocation || undefined,
+      available: editAvailable,
+    })
+      .then(() => refreshUser())
+      .then(() => { setEditVisible(false); Alert.alert('Perfil actualizado'); })
+      .catch(e => {
+        const msg = e.message?.includes('400') ? 'Ese nombre de usuario ya está en uso.' : e.message;
+        Alert.alert('Error', msg);
+      })
+      .finally(() => setSaving(false));
+  };
+
+  const MENU_ITEMS = [
+    {
+      label: 'Estadísticas',
+      icon: 'bar-chart-outline' as const,
+      onPress: () => Alert.alert(
+        'Estadísticas',
+        `Partidos jugados: ${user.matchesPlayed}\nSeguidores: ${stats.followersCount}\nSiguiendo: ${stats.followingCount}\nVictorias: ${user.wins}`,
+      ),
+    },
+    {
+      label: 'Partidos',
+      icon: 'tennisball-outline' as const,
+      onPress: () => router.push({ pathname: '/mis-partidos', params: { userId: user.id } }),
+    },
+    {
+      label: 'Publicaciones',
+      icon: 'document-text-outline' as const,
+      onPress: () => router.push(`/profile/${user.id}`),
+    },
+    {
+      label: 'Equipamiento',
+      icon: 'bag-handle-outline' as const,
+      onPress: () => Alert.alert('Próximamente', 'Esta sección estará disponible pronto.'),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -66,7 +116,6 @@ export default function PerfilScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Avatar + info */}
         <View style={styles.profileSection}>
           <Avatar name={user.name} size={72} available={user.available} />
           <View style={styles.profileInfo}>
@@ -79,22 +128,11 @@ export default function PerfilScreen() {
               </View>
             ) : null}
           </View>
-          <Button
-            label="Editar"
-            variant="outline"
-            size="sm"
-            onPress={() => {
-              setEditBio(user.bio ?? '');
-              setEditLocation(user.location ?? '');
-              setEditAvailable(user.available);
-              setEditVisible(true);
-            }}
-          />
+          <Button label="Editar" variant="outline" size="sm" onPress={openEdit} />
         </View>
 
         {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
 
-        {/* Siguiendo · Seguidores · Partidos */}
         <View style={styles.statsRow}>
           <TouchableOpacity style={styles.statCard} activeOpacity={0.7} onPress={() => router.push({ pathname: '/followers/[id]', params: { id: user.id, mode: 'following' } })}>
             <Text style={styles.statValue}>{stats.followingCount}</Text>
@@ -112,20 +150,19 @@ export default function PerfilScreen() {
           </View>
         </View>
 
-        {/* Gráfico de rendimiento — próximamente */}
         <View style={styles.chartPlaceholder}>
           <Ionicons name="stats-chart-outline" size={28} color={colors.textMuted} />
           <Text style={styles.chartPlaceholderText}>Rendimiento de partidos</Text>
           <Text style={styles.chartPlaceholderSub}>Próximamente</Text>
         </View>
 
-        {/* Menú de secciones */}
         <View style={styles.menuList}>
           {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
               key={item.label}
               style={[styles.menuItem, i < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
               activeOpacity={0.7}
+              onPress={item.onPress}
             >
               <View style={styles.menuItemLeft}>
                 <View style={styles.menuIcon}>
@@ -150,6 +187,23 @@ export default function PerfilScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView style={{ flex: 1, padding: 20 }}>
+            <Text style={styles.modalLabel}>Nombre</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Tu nombre"
+              placeholderTextColor={colors.textMuted}
+              value={editName}
+              onChangeText={setEditName}
+            />
+            <Text style={styles.modalLabel}>Usuario</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="nombre_usuario"
+              placeholderTextColor={colors.textMuted}
+              value={editUsername}
+              onChangeText={setEditUsername}
+              autoCapitalize="none"
+            />
             <Text style={styles.modalLabel}>Bio</Text>
             <TextInput
               style={styles.modalInput}
@@ -182,15 +236,7 @@ export default function PerfilScreen() {
               fullWidth
               size="lg"
               loading={saving}
-              onPress={() => {
-                if (!user) return;
-                setSaving(true);
-                usersApi.update(user.id, { bio: editBio || undefined, location: editLocation || undefined, available: editAvailable })
-                  .then(() => refreshUser())
-                  .then(() => { setEditVisible(false); Alert.alert('Perfil actualizado'); })
-                  .catch(e => Alert.alert('Error', e.message))
-                  .finally(() => setSaving(false));
-              }}
+              onPress={handleSave}
               style={{ marginTop: 8 }}
             />
           </ScrollView>

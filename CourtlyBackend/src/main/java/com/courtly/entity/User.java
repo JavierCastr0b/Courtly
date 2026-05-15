@@ -34,7 +34,7 @@ public class User implements UserDetails {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Level level = Level.PRINCIPIANTE;
+    private Level level = Level.TERCERA;
 
     private String avatar;
     private String bio;

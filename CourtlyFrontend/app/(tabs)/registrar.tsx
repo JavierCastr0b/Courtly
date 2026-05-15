@@ -24,16 +24,20 @@ import { Tag } from '@/src/components/Tag';
 type Mode = 'match' | 'post';
 type MatchType = 'SINGLES' | 'DOBLES';
 
-const MATCH_TYPES: { value: MatchType; label: string; spots: number; icon: string }[] = [
-  { value: 'SINGLES', label: 'Singles', spots: 1, icon: 'person-outline' },
-  { value: 'DOBLES', label: 'Dobles', spots: 3, icon: 'people-outline' },
+const MATCH_TYPES: { value: MatchType; label: string; maxSpots: number; icon: string }[] = [
+  { value: 'SINGLES', label: 'Singles', maxSpots: 2, icon: 'person-outline' },
+  { value: 'DOBLES', label: 'Dobles', maxSpots: 4, icon: 'people-outline' },
 ];
 
 const LEVELS: { value: Level; label: string }[] = [
-  { value: 'PRINCIPIANTE', label: 'Principiante' },
-  { value: 'INTERMEDIO', label: 'Intermedio' },
-  { value: 'AVANZADO', label: 'Avanzado' },
+  { value: 'PRIMERA', label: '1ra' },
+  { value: 'SEGUNDA', label: '2da' },
+  { value: 'TERCERA', label: '3ra' },
+  { value: 'CUARTA', label: '4ta' },
+  { value: 'QUINTA', label: '5ta' },
+  { value: 'SEXTA', label: '6ta' },
 ];
+
 const TIME_SLOTS = ['6:00 AM', '7:00 AM', '8:00 AM', '5:00 PM', '6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo', 'Lunes'];
 
@@ -69,7 +73,7 @@ export default function RegistrarScreen() {
   const [mode, setMode] = useState<Mode>('match');
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<Level>('INTERMEDIO');
+  const [selectedLevel, setSelectedLevel] = useState<Level>('TERCERA');
   const [selectedDate, setSelectedDate] = useState('Hoy');
   const [selectedTime, setSelectedTime] = useState('7:00 PM');
   const [matchType, setMatchType] = useState<MatchType>('DOBLES');
@@ -83,10 +87,23 @@ export default function RegistrarScreen() {
   useEffect(() => {
     setLoadingCourts(true);
     courtsApi.getAll()
-      .then(setCourts)
-      .catch(() => setCourts([]))
+      .then(c => {
+        setCourts(c);
+        if (c.length === 0) setSelectedCourt('__otros__');
+      })
+      .catch(() => {
+        setCourts([]);
+        setSelectedCourt('__otros__');
+      })
       .finally(() => setLoadingCourts(false));
   }, []);
+
+  const maxAdditional = matchType === 'SINGLES' ? 1 : 3;
+
+  const handleMatchTypeChange = (type: MatchType) => {
+    setMatchType(type);
+    setPlayers(type === 'SINGLES' ? 1 : 3);
+  };
 
   const handlePublish = async () => {
     if (mode === 'match' && !selectedCourt) {
@@ -108,11 +125,11 @@ export default function RegistrarScreen() {
           time: resolveTime(selectedTime),
           level: selectedLevel,
           totalSpots: players + 1,
-          matchType,
+          sportType: matchType,
           description: description || undefined,
         });
         Alert.alert('¡Partido publicado!', 'Tu partido ya es visible para otros jugadores.', [
-          { text: 'OK', onPress: () => { setSelectedCourt(null); setDescription(''); } },
+          { text: 'OK', onPress: () => { setSelectedCourt(courts.length === 0 ? '__otros__' : null); setDescription(''); setCustomLocation(''); } },
         ]);
       } else {
         const postLocation = selectedCourt === '__otros__'
@@ -173,11 +190,6 @@ export default function RegistrarScreen() {
                   <ActivityIndicator color={colors.primary} />
                   <Text style={styles.courtLoaderText}>Cargando canchas...</Text>
                 </View>
-              ) : courts.length === 0 ? (
-                <View style={styles.noCourtsBox}>
-                  <Ionicons name="alert-circle-outline" size={18} color={colors.textMuted} />
-                  <Text style={styles.noCourtsText}>No hay canchas registradas. Pide al administrador que agregue canchas para poder crear partidos.</Text>
-                </View>
               ) : (
                 courts.map((c) => (
                   <TouchableOpacity
@@ -208,7 +220,7 @@ export default function RegistrarScreen() {
                   <Ionicons name="location-outline" size={18} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.courtName, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
+                  <Text style={[styles.courtName, selectedCourt === '__otros__' && { color: colors.primary }]}>Otra ubicación</Text>
                   <Text style={styles.courtMeta}>Ingresa la dirección manualmente</Text>
                 </View>
                 {selectedCourt === '__otros__' && (
@@ -222,7 +234,6 @@ export default function RegistrarScreen() {
                   placeholderTextColor={colors.textMuted}
                   value={customLocation}
                   onChangeText={setCustomLocation}
-                  autoFocus
                 />
               )}
 
@@ -249,7 +260,7 @@ export default function RegistrarScreen() {
               </ScrollView>
 
               <Text style={styles.sectionLabel}>Nivel</Text>
-              <View style={styles.levelRow}>
+              <View style={styles.levelGrid}>
                 {LEVELS.map((lvl) => (
                   <TouchableOpacity
                     key={lvl.value}
@@ -259,7 +270,7 @@ export default function RegistrarScreen() {
                   >
                     <Tag label={lvl.value} variant="level" />
                     {selectedLevel === lvl.value && (
-                      <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginTop: 6 }} />
+                      <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginTop: 4 }} />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -271,12 +282,12 @@ export default function RegistrarScreen() {
                   <TouchableOpacity
                     key={mt.value}
                     style={[styles.matchTypeCard, matchType === mt.value && styles.matchTypeCardActive]}
-                    onPress={() => { setMatchType(mt.value); setPlayers(mt.spots); }}
+                    onPress={() => handleMatchTypeChange(mt.value)}
                     activeOpacity={0.75}
                   >
                     <Ionicons name={mt.icon as any} size={22} color={matchType === mt.value ? colors.primary : colors.textSecondary} />
                     <Text style={[styles.matchTypeLabel, matchType === mt.value && styles.matchTypeLabelActive]}>{mt.label}</Text>
-                    <Text style={styles.matchTypeSub}>{mt.spots + 1} jugadores</Text>
+                    <Text style={styles.matchTypeSub}>{mt.maxSpots} jugadores máx.</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -284,15 +295,23 @@ export default function RegistrarScreen() {
               <Text style={styles.sectionLabel}>Jugadores adicionales</Text>
               <View style={styles.stepperRow}>
                 <View style={styles.stepper}>
-                  <TouchableOpacity onPress={() => setPlayers((p) => Math.max(1, p - 1))} style={styles.stepperBtn}>
-                    <Ionicons name="remove" size={20} color={colors.primary} />
+                  <TouchableOpacity
+                    onPress={() => setPlayers(p => Math.max(1, p - 1))}
+                    style={[styles.stepperBtn, (matchType === 'SINGLES' || players <= 1) && styles.stepperBtnDisabled]}
+                    disabled={matchType === 'SINGLES' || players <= 1}
+                  >
+                    <Ionicons name="remove" size={20} color={matchType === 'SINGLES' || players <= 1 ? colors.textMuted : colors.primary} />
                   </TouchableOpacity>
                   <Text style={styles.stepperValue}>{players}</Text>
-                  <TouchableOpacity onPress={() => setPlayers((p) => Math.min(4, p + 1))} style={styles.stepperBtn}>
-                    <Ionicons name="add" size={20} color={colors.primary} />
+                  <TouchableOpacity
+                    onPress={() => setPlayers(p => Math.min(maxAdditional, p + 1))}
+                    style={[styles.stepperBtn, players >= maxAdditional && styles.stepperBtnDisabled]}
+                    disabled={players >= maxAdditional}
+                  >
+                    <Ionicons name="add" size={20} color={players >= maxAdditional ? colors.textMuted : colors.primary} />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.stepperHint}>+ tú = <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{players + 1} total</Text></Text>
+                <Text style={styles.stepperHint}>+ tú = <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{players + 1} total</Text> (máx. {maxAdditional + 1})</Text>
               </View>
 
               <Text style={styles.sectionLabel}>Descripción (opcional)</Text>
@@ -306,7 +325,7 @@ export default function RegistrarScreen() {
                 numberOfLines={4}
               />
 
-              {locationLabel && (
+              {locationLabel ? (
                 <View style={styles.preview}>
                   <Text style={styles.previewTitle}>Resumen del partido</Text>
                   <View style={styles.previewRow}>
@@ -319,10 +338,10 @@ export default function RegistrarScreen() {
                   </View>
                   <View style={styles.previewRow}>
                     <Ionicons name="people-outline" size={15} color={colors.textSecondary} />
-                    <Text style={styles.previewText}>{players + 1} jugadores · {matchType === 'SINGLES' ? 'Singles' : 'Dobles'} · {LEVELS.find(l => l.value === selectedLevel)?.label}</Text>
+                    <Text style={styles.previewText}>{players + 1} jugadores · {matchType === 'SINGLES' ? 'Singles' : 'Dobles'}</Text>
                   </View>
                 </View>
-              )}
+              ) : null}
 
               <Button label="Publicar partido" variant="cta" fullWidth size="lg" loading={loading} onPress={handlePublish} style={styles.publishBtn} />
             </>
@@ -340,7 +359,7 @@ export default function RegistrarScreen() {
               />
 
               <Text style={styles.sectionLabel}>Etiqueta de nivel</Text>
-              <View style={styles.levelRow}>
+              <View style={styles.levelGrid}>
                 {LEVELS.map((lvl) => (
                   <TouchableOpacity
                     key={lvl.value}
@@ -366,12 +385,12 @@ export default function RegistrarScreen() {
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
-                onPress={() => { setSelectedCourt('__otros__'); }}
+                onPress={() => setSelectedCourt('__otros__')}
                 style={[styles.courtItem, selectedCourt === '__otros__' && styles.courtItemSelected]}
                 activeOpacity={0.75}
               >
                 <Ionicons name="create-outline" size={16} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.courtName, { flex: 1 }, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
+                <Text style={[styles.courtName, { flex: 1 }, selectedCourt === '__otros__' && { color: colors.primary }]}>Otra ubicación</Text>
                 {selectedCourt === '__otros__' && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
               </TouchableOpacity>
               {selectedCourt === '__otros__' && (
@@ -433,8 +452,16 @@ const styles = StyleSheet.create({
   pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
   pillText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
   pillTextActive: { color: colors.primary, fontWeight: '600' },
-  levelRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  levelCard: { flex: 1, backgroundColor: colors.secondary, borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  levelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  levelCard: {
+    width: '31%',
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
   levelCardActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
   stepper: {
     flexDirection: 'row',
@@ -443,10 +470,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 4,
     alignSelf: 'flex-start',
-    marginBottom: 20,
     gap: 8,
   },
   stepperBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: colors.cardBg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  stepperBtnDisabled: { opacity: 0.4 },
   stepperValue: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', minWidth: 36, textAlign: 'center' },
   textInput: {
     backgroundColor: colors.secondary,
@@ -487,16 +514,4 @@ const styles = StyleSheet.create({
   stepperHint: { color: colors.textSecondary, fontSize: 14 },
   courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
   courtLoaderText: { color: colors.textMuted, fontSize: 14 },
-  noCourtsBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noCourtsText: { color: colors.textMuted, fontSize: 13, flex: 1, lineHeight: 19 },
 });

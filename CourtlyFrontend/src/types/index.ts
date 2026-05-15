@@ -1,4 +1,4 @@
-export type Level = 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO';
+export type Level = 'PRIMERA' | 'SEGUNDA' | 'TERCERA' | 'CUARTA' | 'QUINTA' | 'SEXTA';
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 export interface User {

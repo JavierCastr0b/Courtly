@@ -14,29 +14,26 @@ export const colors = {
   cardBg: '#1C2028',
   tabBar: '#0D1117',
   tabBarBorder: '#1C2028',
-  beginner: '#34C759',
-  intermediate: '#1E90FF',
-  advanced: '#FF6B00',
   overlay: 'rgba(0,0,0,0.7)',
   shimmer: '#262D3A',
 };
 
-export type LevelType = 'Principiante' | 'Intermedio' | 'Avanzado';
+export type LevelType = 'PRIMERA' | 'SEGUNDA' | 'TERCERA' | 'CUARTA' | 'QUINTA' | 'SEXTA';
 
 export const levelColor: Record<string, string> = {
-  Principiante: colors.beginner,
-  Intermedio: colors.intermediate,
-  Avanzado: colors.advanced,
-  PRINCIPIANTE: colors.beginner,
-  INTERMEDIO: colors.intermediate,
-  AVANZADO: colors.advanced,
+  PRIMERA: '#34C759',
+  SEGUNDA: '#00BFA5',
+  TERCERA: '#1E90FF',
+  CUARTA: '#8E44AD',
+  QUINTA: '#FF6B00',
+  SEXTA: '#E74C3C',
 };
 
 export const levelDisplay: Record<string, string> = {
-  PRINCIPIANTE: 'Principiante',
-  INTERMEDIO: 'Intermedio',
-  AVANZADO: 'Avanzado',
-  Principiante: 'Principiante',
-  Intermedio: 'Intermedio',
-  Avanzado: 'Avanzado',
+  PRIMERA: '1ra',
+  SEGUNDA: '2da',
+  TERCERA: '3ra',
+  CUARTA: '4ta',
+  QUINTA: '5ta',
+  SEXTA: '6ta',
 };

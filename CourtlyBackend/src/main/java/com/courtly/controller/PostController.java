@@ -83,4 +83,9 @@ public class PostController {
         postRepository.save(post);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/liked")
+    public List<String> getLikedIds(@AuthenticationPrincipal User user) {
+        return postRepository.findLikedIdsByUserId(user.getId());
+    }
 }

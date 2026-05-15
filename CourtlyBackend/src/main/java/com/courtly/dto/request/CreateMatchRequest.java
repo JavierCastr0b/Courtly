@@ -17,6 +17,6 @@ public class CreateMatchRequest {
     @NotNull private LocalDate date;
     @NotNull private LocalTime time;
     @NotNull private Level level;
-    @Min(2) @Max(4) private int totalSpots;
+    @Min(2) @Max(8) private int totalSpots;
     private String description;
 }

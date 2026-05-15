@@ -71,7 +71,7 @@ class CourtControllerTest extends BaseControllerTest {
         Match match = Match.builder()
                 .id("match-1").court(mockCourt).organizer(mockUser)
                 .date(LocalDate.now().plusDays(1)).time(LocalTime.of(18, 0))
-                .level(Level.INTERMEDIO).totalSpots(4).build();
+                .level(Level.TERCERA).totalSpots(4).build();
 
         when(matchRepository.findByCourtId("court-1")).thenReturn(List.of(match));
 

@@ -43,6 +43,12 @@ public class UserController {
         if (updates.containsKey("location")) user.setLocation((String) updates.get("location"));
         if (updates.containsKey("available")) user.setAvailable((Boolean) updates.get("available"));
         if (updates.containsKey("name")) user.setName((String) updates.get("name"));
+        if (updates.containsKey("username")) {
+            String newUsername = (String) updates.get("username");
+            if (newUsername != null && !newUsername.isBlank() && userRepository.existsByUsernameAndIdNot(newUsername, id))
+                return ResponseEntity.badRequest().build();
+            if (newUsername != null && !newUsername.isBlank()) user.setUsername(newUsername);
+        }
         return ResponseEntity.ok(userRepository.save(user));
     }
 
@@ -83,5 +89,20 @@ public class UserController {
         User me = userRepository.findById(current.getId()).orElseThrow();
         List<String> ids = me.getFollowing().stream().map(User::getId).toList();
         return ResponseEntity.ok(ids);
+    }
+
+    @GetMapping("/{id}/followers")
+    public ResponseEntity<List<User>> getFollowers(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findFollowersOf(id));
+    }
+
+    @GetMapping("/{id}/following")
+    public ResponseEntity<List<User>> getFollowing(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findFollowingOf(id));
+    }
+
+    @GetMapping("/{id}/friends")
+    public ResponseEntity<List<User>> getFriends(@PathVariable String id) {
+        return ResponseEntity.ok(userRepository.findFriendsOf(id));
     }
 }
