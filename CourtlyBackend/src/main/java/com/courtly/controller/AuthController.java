@@ -38,6 +38,7 @@ public class AuthController {
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .level(req.getLevel() != null ? req.getLevel() : com.courtly.entity.Level.PRINCIPIANTE)
+                .dominantHand(req.getDominantHand())
                 .build();
 
         User saved = userRepository.save(user);

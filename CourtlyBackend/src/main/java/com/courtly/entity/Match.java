@@ -5,7 +5,9 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -52,7 +54,47 @@ public class Match {
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private Set<User> participants = new HashSet<>();
 
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "match_winners",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"))
+    private Set<User> winners = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "match_team_a",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"))
+    private Set<User> teamA = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "match_team_b",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"))
+    private Set<User> teamB = new HashSet<>();
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "match_guests_a", joinColumns = @JoinColumn(name = "match_id"))
+    @Column(name = "guest_name")
+    private List<String> teamAGuests = new ArrayList<>();
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "match_guests_b", joinColumns = @JoinColumn(name = "match_id"))
+    @Column(name = "guest_name")
+    private List<String> teamBGuests = new ArrayList<>();
+
+    @Builder.Default
+    private boolean resultRecorded = false;
+
+    private String score;
+
     public int getSpotsLeft() {
-        return totalSpots - participants.size();
+        int guests = (teamAGuests != null ? teamAGuests.size() : 0)
+                   + (teamBGuests != null ? teamBGuests.size() : 0);
+        return totalSpots - participants.size() - guests;
     }
 }

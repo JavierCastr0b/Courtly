@@ -1,6 +1,11 @@
 export type Level = 'INICIACION' | 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO' | 'PROFESIONAL';
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
+export type DominantHand = 'DERECHA' | 'IZQUIERDA';
+export type PreferredSide = 'REVES' | 'DRIVE';
+export type PreferredFormat = 'SINGLES' | 'DOBLES';
+export type PreferredStyle = 'COMPETITIVO' | 'CHILL';
+
 export interface User {
   id: string;
   name: string;
@@ -13,6 +18,26 @@ export interface User {
   available: boolean;
   matchesPlayed: number;
   wins: number;
+  dominantHand: DominantHand | null;
+  preferredSide: PreferredSide | null;
+  preferredFormat: PreferredFormat | null;
+  preferredStyle: PreferredStyle | null;
+  rating: number | null;
+}
+
+export interface Equipment {
+  id: string;
+  type: 'PALA' | 'ZAPATILLA';
+  name: string | null;
+  brand: string | null;
+}
+
+export interface UserActivity {
+  id: string;
+  date: string;
+  durationMinutes: number;
+  distanceKm: number;
+  points: number;
 }
 
 export interface Court {
@@ -37,6 +62,13 @@ export interface Match {
   spotsLeft: number;
   description: string | null;
   participants: User[];
+  winners: User[];
+  teamA: User[];
+  teamB: User[];
+  teamAGuests: string[];
+  teamBGuests: string[];
+  resultRecorded: boolean;
+  score: string | null;
   matchType: string | null;
   sportType: string | null;
 }

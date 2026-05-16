@@ -62,11 +62,11 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           </View>
         </View>
         <Button
-          label={isFull ? 'Completo' : !canJoin ? 'Inscrito' : 'Unirme'}
-          variant={canJoin ? 'primary' : 'secondary'}
+          label={match.resultRecorded ? 'Terminado' : isFull ? 'Completo' : !canJoin ? 'Inscrito' : 'Unirme'}
+          variant={canJoin && !match.resultRecorded ? 'primary' : 'secondary'}
           size="sm"
           fullWidth
-          disabled={!canJoin}
+          disabled={!canJoin || match.resultRecorded}
           loading={joining}
           onPress={handleJoin}
           style={{ marginTop: 10 }}
@@ -123,10 +123,10 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
       </View>
 
       <Button
-        label={isFull ? 'Partido completo' : !canJoin ? 'Ya estás inscrito' : 'Unirme al partido'}
-        variant={canJoin ? 'primary' : 'secondary'}
+        label={match.resultRecorded ? 'Partido terminado' : isFull ? 'Partido completo' : !canJoin ? 'Ya estás inscrito' : 'Unirme al partido'}
+        variant={canJoin && !match.resultRecorded ? 'primary' : 'secondary'}
         fullWidth
-        disabled={!canJoin}
+        disabled={!canJoin || match.resultRecorded}
         loading={joining}
         onPress={handleJoin}
         style={{ marginTop: 14 }}

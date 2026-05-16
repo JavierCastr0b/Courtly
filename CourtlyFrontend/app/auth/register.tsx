@@ -34,6 +34,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<Level>('PRINCIPIANTE');
+  const [dominantHand, setDominantHand] = useState<'DERECHA' | 'IZQUIERDA' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,7 +50,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await register(name, username, email, password, selectedLevel);
+      await register(name, username, email, password, selectedLevel, dominantHand);
     } catch {
       setError('Error al crear la cuenta. Intenta de nuevo.');
     } finally {
@@ -142,6 +143,22 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            <Text style={styles.levelLabel}>Mano dominante</Text>
+            <View style={styles.handRow}>
+              {(['DERECHA', 'IZQUIERDA'] as const).map((hand) => (
+                <TouchableOpacity
+                  key={hand}
+                  onPress={() => setDominantHand(dominantHand === hand ? null : hand)}
+                  style={[styles.handBtn, dominantHand === hand && styles.handBtnActive]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.handText, dominantHand === hand && styles.handTextActive]}>
+                    {hand === 'DERECHA' ? 'Derecha' : 'Izquierda'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {!!error && <Text style={styles.error}>{error}</Text>}
@@ -292,5 +309,30 @@ const styles = StyleSheet.create({
   levelSub: {
     color: colors.textMuted,
     fontSize: 11,
+  },
+  handRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  handBtn: {
+    flex: 1,
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  handBtnActive: {
+    borderColor: colors.ctaHighlight,
+    backgroundColor: colors.ctaHighlight + '18',
+  },
+  handText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  handTextActive: {
+    color: colors.ctaHighlight,
   },
 });

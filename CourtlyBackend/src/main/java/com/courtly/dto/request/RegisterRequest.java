@@ -13,4 +13,5 @@ public class RegisterRequest {
     @NotBlank @Email private String email;
     @NotBlank @Size(min = 8) private String password;
     private Level level;
+    private String dominantHand;
 }

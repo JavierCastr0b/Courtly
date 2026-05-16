@@ -40,6 +40,13 @@ public class User implements UserDetails {
     private String bio;
     private String location;
 
+    private String dominantHand; // DERECHA | IZQUIERDA
+
+    // Play preferences
+    private String preferredSide;   // REVES | DRIVE
+    private String preferredFormat; // SINGLES | DOBLES
+    private String preferredStyle;  // COMPETITIVO | CHILL
+
     @Builder.Default
     private boolean available = true;
 
@@ -50,6 +57,8 @@ public class User implements UserDetails {
     @Builder.Default
     @Column(nullable = false)
     private int wins = 0;
+
+    private Double rating; // avg stars 1.0–5.0, null = sin rating
 
     @JsonIgnore
     @Builder.Default

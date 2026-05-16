@@ -1,8 +1,10 @@
 package com.courtly.controller;
 
 import com.courtly.dto.request.CreatePostRequest;
+import com.courtly.entity.Notification;
 import com.courtly.entity.Post;
 import com.courtly.entity.User;
+import com.courtly.repository.NotificationRepository;
 import com.courtly.repository.PostRepository;
 import com.courtly.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -25,6 +27,7 @@ public class PostController {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
 
     @GetMapping
     public Page<Post> getFeed(@PageableDefault(size = 20) Pageable pageable) {
@@ -77,8 +80,18 @@ public class PostController {
     public ResponseEntity<Void> like(@PathVariable String id,
                                      @AuthenticationPrincipal User user) {
         Post post = postRepository.findById(id).orElseThrow();
-        post.getLikedBy().add(userRepository.findById(user.getId()).orElseThrow());
+        User liker = userRepository.findById(user.getId()).orElseThrow();
+        boolean alreadyLiked = post.getLikedBy().contains(liker);
+        post.getLikedBy().add(liker);
         postRepository.save(post);
+        if (!alreadyLiked && !post.getUser().getId().equals(user.getId())) {
+            notificationRepository.save(Notification.builder()
+                    .recipient(post.getUser())
+                    .sender(liker)
+                    .type("LIKE")
+                    .referenceId(post.getId())
+                    .build());
+        }
         return ResponseEntity.ok().build();
     }
 
