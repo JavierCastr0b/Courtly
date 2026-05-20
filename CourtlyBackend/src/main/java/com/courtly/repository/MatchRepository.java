@@ -2,6 +2,7 @@ package com.courtly.repository;
 
 import com.courtly.entity.Level;
 import com.courtly.entity.Match;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +18,7 @@ public interface MatchRepository extends JpaRepository<Match, String> {
     List<Match> findByCourtIdAndLevel(String courtId, Level level);
     List<Match> findByOrganizerId(String organizerId);
     List<Match> findByDateGreaterThanEqual(LocalDate date);
+    List<Match> findByDateGreaterThanEqual(LocalDate date, Pageable pageable);
 
     @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.id = :userId ORDER BY m.date DESC")
     List<Match> findByParticipantId(@Param("userId") String userId);

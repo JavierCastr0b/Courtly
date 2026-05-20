@@ -1,7 +1,19 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-export const BASE_URL = 'http://192.168.18.2:8080/api';
+function getBaseUrl(): string {
+  // In dev, hostUri is the Metro bundler address (e.g. "192.168.x.x:8081")
+  // We swap the port for our backend port
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (__DEV__ && hostUri) {
+    const host = hostUri.split(':')[0];
+    return `http://${host}:8080/api`;
+  }
+  return 'https://your-production-api.com/api';
+}
+
+export const BASE_URL = getBaseUrl();
 const TOKEN_KEY = '@courtly_token';
 
 export async function getToken(): Promise<string | null> {

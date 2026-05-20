@@ -2,6 +2,7 @@ package com.courtly.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,7 +12,12 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "matches")
+@Table(name = "matches", indexes = {
+    @Index(name = "idx_match_organizer", columnList = "organizer_id"),
+    @Index(name = "idx_match_court", columnList = "court_id"),
+    @Index(name = "idx_match_date", columnList = "date"),
+    @Index(name = "idx_match_level", columnList = "level")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Match {
 
@@ -48,6 +54,7 @@ public class Match {
     private String description;
 
     @Builder.Default
+    @BatchSize(size = 25)
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "match_participants",
             joinColumns = @JoinColumn(name = "match_id"),
@@ -55,34 +62,37 @@ public class Match {
     private Set<User> participants = new HashSet<>();
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
+    @BatchSize(size = 25)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "match_winners",
             joinColumns = @JoinColumn(name = "match_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private Set<User> winners = new HashSet<>();
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
+    @BatchSize(size = 25)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "match_team_a",
             joinColumns = @JoinColumn(name = "match_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private Set<User> teamA = new HashSet<>();
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
+    @BatchSize(size = 25)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "match_team_b",
             joinColumns = @JoinColumn(name = "match_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private Set<User> teamB = new HashSet<>();
 
     @Builder.Default
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "match_guests_a", joinColumns = @JoinColumn(name = "match_id"))
     @Column(name = "guest_name")
     private List<String> teamAGuests = new ArrayList<>();
 
     @Builder.Default
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "match_guests_b", joinColumns = @JoinColumn(name = "match_id"))
     @Column(name = "guest_name")
     private List<String> teamBGuests = new ArrayList<>();

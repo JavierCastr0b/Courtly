@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -32,12 +34,13 @@ public class MatchController {
     @GetMapping
     public List<Match> getAll(@RequestParam(required = false) String courtId,
                               @RequestParam(required = false) Level level,
-                              @RequestParam(required = false) LocalDate date) {
+                              @RequestParam(required = false) LocalDate date,
+                              @RequestParam(defaultValue = "50") int size) {
         if (courtId != null && level != null) return matchRepository.findByCourtIdAndLevel(courtId, level);
         if (courtId != null) return matchRepository.findByCourtId(courtId);
         if (level != null) return matchRepository.findByLevel(level);
         if (date != null) return matchRepository.findByDate(date);
-        return matchRepository.findByDateGreaterThanEqual(LocalDate.now());
+        return matchRepository.findByDateGreaterThanEqual(LocalDate.now(), PageRequest.of(0, Math.min(size, 100)));
     }
 
     @GetMapping("/{id}")
@@ -181,13 +184,13 @@ public class MatchController {
         match.setResultRecorded(true);
 
         Set<String> winnerIds = winners.stream().map(User::getId).collect(Collectors.toSet());
-        for (User participant : match.getParticipants()) {
-            User u = userRepository.findById(participant.getId()).orElseThrow();
-            boolean won = winnerIds.contains(u.getId());
+        List<String> participantIds = match.getParticipants().stream().map(User::getId).toList();
+        List<User> participantUsers = userRepository.findAllById(participantIds);
+        for (User u : participantUsers) {
             u.setMatchesPlayed(u.getMatchesPlayed() + 1);
-            if (won) u.setWins(u.getWins() + 1);
-            userRepository.save(u);
+            if (winnerIds.contains(u.getId())) u.setWins(u.getWins() + 1);
         }
+        userRepository.saveAll(participantUsers);
 
         return ResponseEntity.ok(matchRepository.save(match));
     }

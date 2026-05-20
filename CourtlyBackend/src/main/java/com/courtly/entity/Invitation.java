@@ -7,7 +7,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "invitations")
+@Table(name = "invitations", indexes = {
+    @Index(name = "idx_invitation_to_user", columnList = "to_user_id"),
+    @Index(name = "idx_invitation_from_user", columnList = "from_user_id")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Invitation {
 

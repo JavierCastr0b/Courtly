@@ -280,7 +280,7 @@ export default function PerfilScreen() {
                   const theirNames = theirTeam.map(p => p.name.split(' ')[0]).join(' / ') || '—';
                   oppLabel = `${myNames} vs. ${theirNames}`;
                 } else {
-                  const opps = m.participants.filter(p => p.id !== user.id);
+                  const opps = (m.participants ?? []).filter(p => p.id !== user.id);
                   oppLabel = opps.length > 0
                     ? 'vs. ' + opps.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ')
                     : 'Partido';

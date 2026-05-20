@@ -67,8 +67,10 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<User>> search(@RequestParam String q) {
-        return ResponseEntity.ok(userRepository.searchByNameOrUsername(q));
+    public ResponseEntity<List<User>> search(@RequestParam String q,
+                                             @RequestParam(defaultValue = "20") int limit) {
+        List<User> results = userRepository.searchByNameOrUsername(q);
+        return ResponseEntity.ok(results.stream().limit(Math.min(limit, 50)).toList());
     }
 
     @PostMapping("/{id}/follow")
@@ -105,9 +107,7 @@ public class UserController {
 
     @GetMapping("/me/following")
     public ResponseEntity<List<String>> myFollowing(@AuthenticationPrincipal User current) {
-        User me = userRepository.findById(current.getId()).orElseThrow();
-        List<String> ids = me.getFollowing().stream().map(User::getId).toList();
-        return ResponseEntity.ok(ids);
+        return ResponseEntity.ok(userRepository.findFollowingIds(current.getId()));
     }
 
     @GetMapping("/{id}/followers")
