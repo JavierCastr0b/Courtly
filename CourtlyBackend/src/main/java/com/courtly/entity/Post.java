@@ -38,6 +38,9 @@ public class Post {
     private LocalDate date;
     private LocalTime time;
 
+    @Column(columnDefinition = "TEXT")
+    private String image;
+
     @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

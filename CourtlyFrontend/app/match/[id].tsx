@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Modal, Platform, TextInput,
@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { colors, levelColor, levelDisplay } from '@/src/theme/colors';
 import { Match, User } from '@/src/types';
 import { matchesApi, MatchSet } from '@/src/api/matches';
@@ -13,6 +15,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { Avatar } from '@/src/components/Avatar';
 import { Tag } from '@/src/components/Tag';
 import { Button } from '@/src/components/Button';
+import ScorecardCard from '@/src/components/ScorecardCard';
 
 const isDoubles = (m: Match) =>
   (m.matchType ?? '').toUpperCase().includes('DOBLES') ||
@@ -117,6 +120,13 @@ export default function MatchDetailScreen() {
   const [sets, setSets] = useState<MatchSet[]>([{ a: 0, b: 0 }]);
   const [recording, setRecording] = useState(false);
 
+  // Scorecard
+  const [showScorecard, setShowScorecard] = useState(false);
+  const [lastSets, setLastSets] = useState<MatchSet[]>([]);
+  const [lastWinner, setLastWinner] = useState<'A' | 'B' | null>(null);
+  const scorecardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+
   useEffect(() => {
     matchesApi.getById(id)
       .then(setMatch)
@@ -213,11 +223,33 @@ export default function MatchDetailScreen() {
       .then(updated => {
         setMatch(updated);
         setShowFinalize(false);
+        setLastSets(validSets);
+        setLastWinner(winningTeam);
         setSets([{ a: 0, b: 0 }]);
         setWinningTeam(null);
+        setShowScorecard(true);
       })
       .catch(e => Alert.alert('Error', e.message ?? 'No se pudo registrar el resultado.'))
       .finally(() => setRecording(false));
+  };
+
+  const handleShareScorecard = async () => {
+    if (!scorecardRef.current) return;
+    setSharing(true);
+    try {
+      // Small delay so the offscreen view fully lays out before capture
+      await new Promise(r => setTimeout(r, 150));
+      const uri = await captureRef(scorecardRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png' });
+    } catch {
+      Alert.alert('Error', 'No se pudo compartir el resultado.');
+    } finally {
+      setSharing(false);
+    }
   };
 
   const addSet = () => setSets(prev => [...prev, { a: 0, b: 0 }]);
@@ -503,6 +535,63 @@ export default function MatchDetailScreen() {
         </View>
       </Modal>
 
+      {/* ── Offscreen scorecard for capture (outside Modal — iOS captureRef requires this) ── */}
+      {showScorecard && (
+        <View style={st.offscreenCapture} pointerEvents="none">
+          <View ref={scorecardRef} style={st.scorecardCaptureWrapper} collapsable={false}>
+            <ScorecardCard
+              date={match?.date ?? ''}
+              location={match?.court?.name ?? match?.customLocation ?? ''}
+              teamANames={
+                doubles
+                  ? (match?.teamA ?? []).map(u => u.name.split(' ')[0])
+                  : (match?.participants ?? []).slice(0, 1).map(u => u.name.split(' ')[0])
+              }
+              teamBNames={
+                doubles
+                  ? (match?.teamB ?? []).map(u => u.name.split(' ')[0])
+                  : (match?.participants ?? []).slice(1, 2).map(u => u.name.split(' ')[0])
+              }
+              sets={lastSets.length > 0 ? lastSets : [{ a: 0, b: 0 }]}
+              winnerTeam={lastWinner}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* ── Scorecard modal (visual only, no ref) ── */}
+      <Modal visible={showScorecard} transparent animationType="fade" onRequestClose={() => setShowScorecard(false)}>
+        <View style={st.overlay}>
+          <View style={st.scorecardSheet}>
+            <View style={st.handle} />
+            <Text style={st.sheetTitle}>Resultado registrado</Text>
+            <Text style={st.sheetSub}>Comparte el scorecard con los jugadores</Text>
+            <View style={st.scorecardPreview}>
+              <ScorecardCard
+                date={match?.date ?? ''}
+                location={match?.court?.name ?? match?.customLocation ?? ''}
+                teamANames={
+                  doubles
+                    ? (match?.teamA ?? []).map(u => u.name.split(' ')[0])
+                    : (match?.participants ?? []).slice(0, 1).map(u => u.name.split(' ')[0])
+                }
+                teamBNames={
+                  doubles
+                    ? (match?.teamB ?? []).map(u => u.name.split(' ')[0])
+                    : (match?.participants ?? []).slice(1, 2).map(u => u.name.split(' ')[0])
+                }
+                sets={lastSets.length > 0 ? lastSets : [{ a: 0, b: 0 }]}
+                winnerTeam={lastWinner}
+              />
+            </View>
+            <View style={st.sheetActions}>
+              <Button label="Cerrar" variant="outline" size="md" onPress={() => setShowScorecard(false)} style={{ flex: 1 }} />
+              <Button label={sharing ? 'Compartiendo...' : 'Compartir'} variant="primary" size="md" loading={sharing} onPress={handleShareScorecard} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Finalize modal ── */}
       <Modal visible={showFinalize} transparent animationType="slide" onRequestClose={() => setShowFinalize(false)}>
         <View style={st.overlay}>
@@ -711,7 +800,31 @@ const st = StyleSheet.create({
   joinErrorText: { color: colors.ctaHighlight, fontSize: 12, flex: 1 },
 
   // Modals
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  offscreenCapture: {
+    position: 'absolute',
+    transform: [{ translateX: -2000 }],
+    top: 100,
+  },
+  scorecardCaptureWrapper: {
+    backgroundColor: 'transparent',
+    padding: 16,
+  },
+  scorecardPreview: {
+    backgroundColor: '#111318',
+    borderRadius: 20,
+    padding: 20,
+    width: 312,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  scorecardSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    gap: 16, alignItems: 'center',
+  },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,

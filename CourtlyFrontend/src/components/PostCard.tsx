@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../types';
 import { postsApi } from '../api/posts';
@@ -44,6 +44,14 @@ export function PostCard({ post, initialLiked = false }: PostCardProps) {
 
       {post.description ? (
         <Text style={styles.description}>{post.description}</Text>
+      ) : null}
+
+      {post.image ? (
+        <Image
+          source={{ uri: post.image }}
+          style={styles.postImage}
+          resizeMode="cover"
+        />
       ) : null}
 
       <View style={styles.infoRow}>
@@ -125,6 +133,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
+    marginBottom: 12,
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
     marginBottom: 12,
   },
   infoRow: {

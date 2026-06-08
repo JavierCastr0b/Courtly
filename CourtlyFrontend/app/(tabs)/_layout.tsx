@@ -62,16 +62,7 @@ export default function TabLayout() {
           tabBarActiveTintColor: colors.ctaHighlight,
         }}
       />
-      <Tabs.Screen
-        name="grupos"
-        options={{
-          title: 'Grupos',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
+<Tabs.Screen
         name="perfil"
         options={{
           title: 'Tú',

@@ -33,8 +33,8 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(username, password);
-    } catch {
-      setError('Error al iniciar sesión. Intenta de nuevo.');
+    } catch (e: any) {
+      setError(e?.message ?? 'Error al iniciar sesión. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }

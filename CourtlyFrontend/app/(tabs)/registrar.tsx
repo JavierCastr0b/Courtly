@@ -10,9 +10,11 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '@/src/theme/colors';
 import { Court, Level } from '@/src/types';
 import { courtsApi } from '@/src/api/courts';
@@ -78,6 +80,7 @@ export default function RegistrarScreen() {
   const [players, setPlayers] = useState(3);
   const [description, setDescription] = useState('');
   const [postText, setPostText] = useState('');
+  const [postPhoto, setPostPhoto] = useState<{ uri: string; base64: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingCourts, setLoadingCourts] = useState(true);
   const [customLocation, setCustomLocation] = useState('');
@@ -89,6 +92,26 @@ export default function RegistrarScreen() {
       .catch(() => setCourts([]))
       .finally(() => setLoadingCourts(false));
   }, []);
+
+  const handlePickPhoto = async (source: 'camera' | 'gallery') => {
+    const { status } = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso para continuar.');
+      return;
+    }
+
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, base64: true, mediaTypes: 'images' });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setPostPhoto({ uri: asset.uri, base64: asset.base64 ?? '' });
+    }
+  };
 
   const handlePublish = async () => {
     if (mode === 'match' && !selectedCourt) {
@@ -123,9 +146,10 @@ export default function RegistrarScreen() {
         await postsApi.create({
           title: postText,
           location: postLocation,
+          image: postPhoto ? `data:image/jpeg;base64,${postPhoto.base64}` : undefined,
         });
         Alert.alert('¡Publicación creada!', 'Tu publicación es visible en el feed.', [
-          { text: 'OK', onPress: () => { setPostText(''); setSelectedCourt(null); } },
+          { text: 'OK', onPress: () => { setPostText(''); setSelectedCourt(null); setPostPhoto(null); } },
         ]);
       }
     } catch {
@@ -357,6 +381,27 @@ export default function RegistrarScreen() {
                 autoFocus
               />
 
+              <Text style={styles.sectionLabel}>Foto (opcional)</Text>
+              {postPhoto ? (
+                <View style={styles.photoPreviewBox}>
+                  <Image source={{ uri: postPhoto.uri }} style={styles.photoPreview} resizeMode="cover" />
+                  <TouchableOpacity style={styles.photoRemove} onPress={() => setPostPhoto(null)}>
+                    <Ionicons name="close-circle" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.photoRow}>
+                  <TouchableOpacity style={styles.photoBtn} onPress={() => handlePickPhoto('camera')} activeOpacity={0.75}>
+                    <Ionicons name="camera-outline" size={20} color={colors.primary} />
+                    <Text style={styles.photoBtnText}>Cámara</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.photoBtn} onPress={() => handlePickPhoto('gallery')} activeOpacity={0.75}>
+                    <Ionicons name="image-outline" size={20} color={colors.primary} />
+                    <Text style={styles.photoBtnText}>Galería</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <Text style={styles.sectionLabel}>Ubicación (opcional)</Text>
               {courts.map((c) => (
                 <TouchableOpacity
@@ -500,6 +545,16 @@ const styles = StyleSheet.create({
   matchTypeSub: { color: colors.textMuted, fontSize: 12 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
   stepperHint: { color: colors.textSecondary, fontSize: 14 },
+  photoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  photoBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.secondary, borderRadius: 10, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: colors.primary + '50',
+  },
+  photoBtnText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  photoPreviewBox: { position: 'relative', marginBottom: 20, borderRadius: 12, overflow: 'hidden' },
+  photoPreview: { width: '100%', height: 200, borderRadius: 12 },
+  photoRemove: { position: 'absolute', top: 8, right: 8 },
   courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
   courtLoaderText: { color: colors.textMuted, fontSize: 14 },
   noCourtsBox: {

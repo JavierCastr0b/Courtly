@@ -9,6 +9,7 @@ interface CreatePostData {
   playersNeeded?: number;
   date?: string;
   time?: string;
+  image?: string;
 }
 
 export interface PageResponse<T> {

@@ -16,4 +16,5 @@ public class CreatePostRequest {
     private int playersNeeded;
     private LocalDate date;
     private LocalTime time;
+    private String image;
 }

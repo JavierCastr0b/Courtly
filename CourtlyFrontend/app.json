@@ -28,6 +28,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Courtly necesita acceso a tus fotos para publicar imágenes.",
+          "cameraPermission": "Courtly necesita acceso a tu cámara para tomar fotos."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",

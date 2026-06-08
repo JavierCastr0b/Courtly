@@ -51,8 +51,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register(name, username, email, password, selectedLevel, dominantHand);
-    } catch {
-      setError('Error al crear la cuenta. Intenta de nuevo.');
+    } catch (e: any) {
+      setError(e?.message ?? 'Error al crear la cuenta. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }

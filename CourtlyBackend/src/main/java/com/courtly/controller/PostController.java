@@ -57,6 +57,7 @@ public class PostController {
                 .playersNeeded(req.getPlayersNeeded())
                 .date(req.getDate())
                 .time(req.getTime())
+                .image(req.getImage())
                 .build();
         return ResponseEntity.ok(postRepository.save(post));
     }

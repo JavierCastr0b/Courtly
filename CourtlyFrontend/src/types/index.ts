@@ -85,6 +85,7 @@ export interface Post {
   time: string | null;
   likes: number;
   createdAt: string;
+  image: string | null;
 }
 
 export interface Invitation {
@@ -97,15 +98,6 @@ export interface Invitation {
   time: string;
   message: string | null;
   status: InvitationStatus;
-}
-
-export interface Club {
-  id: string;
-  name: string;
-  description: string | null;
-  location: string | null;
-  image: string | null;
-  memberCount: number;
 }
 
 export interface AuthResponse {

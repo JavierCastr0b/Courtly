@@ -22,7 +22,6 @@ public class DataSeeder implements CommandLineRunner {
     private final CourtRepository courtRepository;
     private final MatchRepository matchRepository;
     private final PostRepository postRepository;
-    private final ClubRepository clubRepository;
     private final EquipmentRepository equipmentRepository;
     private final RecommendationRepository recommendationRepository;
     private final InvitationRepository invitationRepository;
@@ -182,15 +181,7 @@ public class DataSeeder implements CommandLineRunner {
         "Cancha techada, no importa si llueve."
     };
 
-    private static final String[] CLUB_NAMES = {
-        "Lima Pádel Club", "Regatas Pádel", "Wiracocha Padel", "Los Cóndores",
-        "Club Terrazas", "Inkari Pádel", "Flash Padel Lima", "Machu Padel",
-        "Club Miraflores", "Team Los Incas", "Pádel Sur Lima", "Club San Isidro Pádel",
-        "Los Ases del Pádel", "Surco Padel Club", "Molina Pádel", "Club La Victoria",
-        "Pádel Passion Lima", "Red Masters Lima", "Zona Pádel Peru", "The Padel Academy Lima"
-    };
-
-    private static final String[] INVITE_MESSAGES = {
+private static final String[] INVITE_MESSAGES = {
         "¿Jugamos esta tarde?", "Te reto a un partido", "Tengo cancha reservada",
         "¿Revancha?", "¡Vamos a darle con todo!", "¿Te apuntas mañana?",
         "Vi tu perfil, me parece buen nivel", null, null
@@ -214,10 +205,7 @@ public class DataSeeder implements CommandLineRunner {
         List<Court> courts = createCourts();
         log.info("  {} canchas creadas", courts.size());
 
-        createClubs(20, users);
-        log.info("  20 clubes creados");
-
-        createMatches(500, users, courts);
+createMatches(500, users, courts);
         log.info("  500 partidos creados");
 
         createPosts(600, users);
@@ -288,27 +276,7 @@ public class DataSeeder implements CommandLineRunner {
         return courtRepository.saveAll(list);
     }
 
-    private void createClubs(int count, List<User> users) {
-        List<Club> list = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            Object[] distrito = DISTRITOS[RNG.nextInt(DISTRITOS.length)];
-            String distNombre = (String) distrito[0];
-            Set<User> members = new HashSet<>();
-            int memberCount = 15 + RNG.nextInt(35);
-            while (members.size() < memberCount) {
-                members.add(users.get(RNG.nextInt(users.size())));
-            }
-            list.add(Club.builder()
-                .name(CLUB_NAMES[i % CLUB_NAMES.length])
-                .description("Club de pádel con excelentes instalaciones en " + distNombre + ", Lima. ¡Únete!")
-                .location(distNombre + ", Lima")
-                .members(members)
-                .build());
-        }
-        clubRepository.saveAll(list);
-    }
-
-    private void createMatches(int count, List<User> users, List<Court> courts) {
+private void createMatches(int count, List<User> users, List<Court> courts) {
         List<Match> list = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             User organizer = users.get(RNG.nextInt(users.size()));
