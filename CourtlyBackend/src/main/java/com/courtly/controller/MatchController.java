@@ -80,7 +80,7 @@ public class MatchController {
         Match match = matchRepository.findById(id).orElseThrow();
         if (match.getSpotsLeft() <= 0)
             return ResponseEntity.badRequest().body(Map.of("error", "No hay lugares disponibles"));
-        if (user.getLevel().ordinal() < match.getLevel().ordinal())
+        if (user.getLevel() != match.getLevel())
             return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
 
         match.getParticipants().add(user);
