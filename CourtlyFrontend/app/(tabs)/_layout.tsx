@@ -1,18 +1,36 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
 
-function RegisterIcon({ color, focused }: { color: string; focused: boolean }) {
+function RegisterIcon({ focused }: { color: string; focused: boolean }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.registerIcon, focused && styles.registerIconFocused]}>
-      <Ionicons name="add" size={20} color={focused ? '#fff' : colors.textSecondary} />
+    <View style={{
+      width: 40,
+      height: 40,
+      borderRadius: 17,
+      backgroundColor: focused ? colors.accent : colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: -10,
+      ...(focused ? {
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+        elevation: 6,
+      } : {}),
+    }}>
+      <Ionicons name="add" size={20} color={focused ? '#fff' : colors.textMuted} />
     </View>
   );
 }
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
@@ -56,13 +74,13 @@ export default function TabLayout() {
         name="registrar"
         options={{
           title: '',
-          tabBarIcon: ({ focused }) => (
-            <RegisterIcon color={colors.ctaHighlight} focused={focused} />
+          tabBarIcon: ({ focused, color }) => (
+            <RegisterIcon color={color} focused={focused} />
           ),
-          tabBarActiveTintColor: colors.ctaHighlight,
+          tabBarActiveTintColor: colors.accent,
         }}
       />
-<Tabs.Screen
+      <Tabs.Screen
         name="perfil"
         options={{
           title: 'Tú',
@@ -75,23 +93,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  registerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 17,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: -10,
-  },
-  registerIconFocused: {
-    backgroundColor: colors.ctaHighlight,
-    shadowColor: colors.ctaHighlight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-});

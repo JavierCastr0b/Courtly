@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, levelColor, levelDisplay, LevelType } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { levelColor, levelDisplay, LevelType } from '../theme/colors';
 
 interface TagProps {
   label: string;
@@ -10,6 +11,8 @@ interface TagProps {
 }
 
 export function Tag({ label, variant = 'default', level, style }: TagProps) {
+  const { colors } = useTheme();
+
   let bgColor = colors.secondary;
   let textColor = colors.textSecondary;
 

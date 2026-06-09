@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Modal, Platform,
@@ -6,7 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, levelColor, levelDisplay } from '@/src/theme/colors';
+import { levelColor, levelDisplay } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import type { Colors } from '@/src/theme/colors';
 import { User, Equipment, Match } from '@/src/types';
 import { usersApi } from '@/src/api/users';
 import { useAuth } from '@/src/context/AuthContext';
@@ -18,18 +20,122 @@ function fmtDate(s: string) {
 }
 
 function StatBox({ value, label, accent }: { value: string | number; label: string; accent?: string }) {
+  const { colors } = useTheme();
   return (
-    <View style={s.statBox}>
-      <Text style={[s.statVal, accent ? { color: accent } : null]}>{value}</Text>
-      <Text style={s.statLbl}>{label}</Text>
+    <View style={{ flex: 1, alignItems: 'center', gap: 5 }}>
+      <Text style={{ color: accent ?? colors.textPrimary, fontSize: 22, fontWeight: '800' }}>{value}</Text>
+      <Text style={{ color: colors.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>{label}</Text>
     </View>
   );
+}
+
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    navBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 8, paddingVertical: 6,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    backBtn: { padding: 6, width: 40 },
+    scrollContent: { paddingBottom: 48 },
+    hero: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 16,
+      paddingHorizontal: 20, paddingTop: 24, paddingBottom: 12,
+    },
+    avatarGlow: {
+      borderWidth: 2.5, borderRadius: 52, padding: 2,
+      shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
+      elevation: 10,
+    },
+    heroRight: { flex: 1, paddingTop: 4 },
+    heroName: { color: c.textPrimary, fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
+    heroBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7 },
+    lvlBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+    lvlBadgeText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
+    availBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    availDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: c.success },
+    availText: { color: c.success, fontSize: 12, fontWeight: '600' },
+    heroMeta: { color: c.textSecondary, fontSize: 13, marginTop: 7 },
+    bio: { color: c.textSecondary, fontSize: 14, lineHeight: 21, paddingHorizontal: 20, marginBottom: 14 },
+    actionRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
+    statsCard: {
+      flexDirection: 'row', backgroundColor: c.cardBg,
+      marginHorizontal: 20, borderRadius: 16, padding: 20,
+      alignItems: 'center', borderWidth: 1, borderColor: c.border,
+      marginBottom: 12,
+    },
+    statDiv: { width: 1, height: 36, backgroundColor: c.border },
+    followCard: {
+      flexDirection: 'row', marginHorizontal: 20, marginBottom: 16,
+      backgroundColor: c.cardBg, borderRadius: 12, borderWidth: 1, borderColor: c.border,
+    },
+    followItem: { flex: 1, alignItems: 'center', paddingVertical: 14, gap: 4 },
+    followVal: { color: c.textPrimary, fontSize: 18, fontWeight: '700' },
+    followLbl: { color: c.textMuted, fontSize: 11 },
+    followDiv: { width: 1, backgroundColor: c.border, marginVertical: 10 },
+    miniRow: { flexDirection: 'row', gap: 12, marginHorizontal: 20, marginBottom: 20 },
+    miniCard: {
+      flex: 1, backgroundColor: c.cardBg, borderRadius: 14,
+      borderWidth: 1, borderColor: c.border, padding: 16,
+    },
+    miniTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    miniLbl: { color: c.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
+    miniVal: { color: c.textPrimary, fontSize: 26, fontWeight: '800' },
+    miniSub: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    section: { marginHorizontal: 20, marginBottom: 20 },
+    secTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+    card: { backgroundColor: c.cardBg, borderRadius: 14, borderWidth: 1, borderColor: c.border, padding: 16 },
+    matchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+    matchBorder: { borderBottomWidth: 1, borderBottomColor: c.border },
+    resBadge: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+    resW: { backgroundColor: c.success + '22' },
+    resL: { backgroundColor: '#FF4B4B22' },
+    resN: { backgroundColor: c.border + '66' },
+    resTxt: { fontSize: 13, fontWeight: '800' },
+    matchOpp: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
+    matchMeta: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    equipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+    equipBorder: { borderBottomWidth: 1, borderBottomColor: c.border },
+    equipIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    equipName: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
+    equipBrand: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    equipTag: { color: c.textMuted, fontSize: 11 },
+    prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+    prefPill: {
+      backgroundColor: c.cardBg, borderRadius: 20,
+      borderWidth: 1, borderColor: c.border,
+      paddingHorizontal: 14, paddingVertical: 7,
+    },
+    prefPillText: { color: c.textSecondary, fontSize: 13, fontWeight: '500' },
+    prefPillHand: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      borderColor: c.primary + '40', backgroundColor: c.primary + '10',
+    },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalSheet: {
+      backgroundColor: c.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 14,
+    },
+    modalHandle: {
+      width: 40, height: 4, borderRadius: 2,
+      backgroundColor: c.border, alignSelf: 'center', marginBottom: 4,
+    },
+    modalTitle: { color: c.textPrimary, fontSize: 18, fontWeight: '800' },
+    modalSub: { color: c.textMuted, fontSize: 14, marginTop: -6 },
+    starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingVertical: 8 },
+    modalActions: { flexDirection: 'row', gap: 10 },
+  });
 }
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user: me } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [profile, setProfile] = useState<User | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -64,16 +170,10 @@ export default function ProfileScreen() {
   const handleFollow = () => {
     const next = !followed;
     setFollowed(next);
-    setStats(prev => ({
-      ...prev,
-      followersCount: prev.followersCount + (next ? 1 : -1),
-    }));
+    setStats(prev => ({ ...prev, followersCount: prev.followersCount + (next ? 1 : -1) }));
     (next ? usersApi.follow(id) : usersApi.unfollow(id)).catch(() => {
       setFollowed(!next);
-      setStats(prev => ({
-        ...prev,
-        followersCount: prev.followersCount + (next ? -1 : 1),
-      }));
+      setStats(prev => ({ ...prev, followersCount: prev.followersCount + (next ? -1 : 1) }));
     });
   };
 
@@ -94,13 +194,13 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.root} edges={['top']}>
-        <View style={s.navBar}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <View style={s.centered}>
+        <View style={styles.centered}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       </SafeAreaView>
@@ -109,13 +209,13 @@ export default function ProfileScreen() {
 
   if (!profile) {
     return (
-      <SafeAreaView style={s.root} edges={['top']}>
-        <View style={s.navBar}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <View style={s.centered}>
+        <View style={styles.centered}>
           <Text style={{ color: colors.textMuted }}>Perfil no encontrado.</Text>
         </View>
       </SafeAreaView>
@@ -135,47 +235,45 @@ export default function ProfileScreen() {
   ].filter(Boolean) as string[];
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
-      <View style={s.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity style={s.backBtn}>
+        <TouchableOpacity style={styles.backBtn}>
           <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── Hero ── */}
-        <View style={s.hero}>
-          <View style={[s.avatarGlow, { borderColor: lvlCol + 'AA', shadowColor: lvlCol }]}>
+        <View style={styles.hero}>
+          <View style={[styles.avatarGlow, { borderColor: lvlCol + 'AA', shadowColor: lvlCol }]}>
             <Avatar name={profile.name} size={88} available={false} />
           </View>
-          <View style={s.heroRight}>
-            <Text style={s.heroName}>{profile.name}</Text>
-            <View style={s.heroBadges}>
-              <View style={[s.lvlBadge, { backgroundColor: lvlCol + '20', borderColor: lvlCol + '70' }]}>
-                <Text style={[s.lvlBadgeText, { color: lvlCol }]}>{lvlDsp}</Text>
+          <View style={styles.heroRight}>
+            <Text style={styles.heroName}>{profile.name}</Text>
+            <View style={styles.heroBadges}>
+              <View style={[styles.lvlBadge, { backgroundColor: lvlCol + '20', borderColor: lvlCol + '70' }]}>
+                <Text style={[styles.lvlBadgeText, { color: lvlCol }]}>{lvlDsp}</Text>
               </View>
               {profile.available && (
-                <View style={s.availBadge}>
-                  <View style={s.availDot} />
-                  <Text style={s.availText}>Disponible</Text>
+                <View style={styles.availBadge}>
+                  <View style={styles.availDot} />
+                  <Text style={styles.availText}>Disponible</Text>
                 </View>
               )}
             </View>
-            <Text style={s.heroMeta} numberOfLines={1}>
+            <Text style={styles.heroMeta} numberOfLines={1}>
               {'@' + profile.username + (profile.location ? '  ·  ' + profile.location : '')}
             </Text>
           </View>
         </View>
 
-        {profile.bio ? <Text style={s.bio}>{profile.bio}</Text> : null}
+        {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
-        {/* ── Acción: Seguir / Recomendar ── */}
         {!isOwn && (
-          <View style={s.actionRow}>
+          <View style={styles.actionRow}>
             <Button
               label={followed ? 'Siguiendo' : 'Seguir'}
               variant={followed ? 'secondary' : 'primary'}
@@ -193,59 +291,55 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* ── Stats ── */}
-        <View style={s.statsCard}>
+        <View style={styles.statsCard}>
           <StatBox value={profile.matchesPlayed} label="PARTIDOS" />
-          <View style={s.statDiv} />
+          <View style={styles.statDiv} />
           <StatBox value={profile.wins} label="VICTORIAS" accent={colors.success} />
-          <View style={s.statDiv} />
+          <View style={styles.statDiv} />
           <StatBox value={winRate + '%'} label="WIN RATE" />
-          <View style={s.statDiv} />
+          <View style={styles.statDiv} />
           <StatBox value={profile.rating != null ? `★ ${profile.rating.toFixed(1)}` : '—'} label="RATING" accent={colors.primary} />
         </View>
 
-        {/* ── Seguidores ── */}
-        <View style={s.followCard}>
+        <View style={styles.followCard}>
           <TouchableOpacity
-            style={s.followItem}
+            style={styles.followItem}
             onPress={() => router.push({ pathname: '/followers/[id]', params: { id, mode: 'following' } })}
           >
-            <Text style={s.followVal}>{stats.followingCount}</Text>
-            <Text style={s.followLbl}>Siguiendo</Text>
+            <Text style={styles.followVal}>{stats.followingCount}</Text>
+            <Text style={styles.followLbl}>Siguiendo</Text>
           </TouchableOpacity>
-          <View style={s.followDiv} />
+          <View style={styles.followDiv} />
           <TouchableOpacity
-            style={s.followItem}
+            style={styles.followItem}
             onPress={() => router.push({ pathname: '/followers/[id]', params: { id, mode: 'followers' } })}
           >
-            <Text style={s.followVal}>{stats.followersCount}</Text>
-            <Text style={s.followLbl}>Seguidores</Text>
+            <Text style={styles.followVal}>{stats.followersCount}</Text>
+            <Text style={styles.followLbl}>Seguidores</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Mini card: Pala ── */}
-        <View style={s.miniRow}>
-          <View style={s.miniCard}>
-            <View style={s.miniTop}>
+        <View style={styles.miniRow}>
+          <View style={styles.miniCard}>
+            <View style={styles.miniTop}>
               <Ionicons name="tennisball-outline" size={13} color={colors.primary} />
-              <Text style={s.miniLbl}>PALA</Text>
+              <Text style={styles.miniLbl}>PALA</Text>
             </View>
             {pala ? (
               <>
-                <Text style={s.miniVal} numberOfLines={1}>{pala.name ?? pala.brand ?? '—'}</Text>
-                {pala.brand && pala.name ? <Text style={s.miniSub} numberOfLines={1}>{pala.brand}</Text> : null}
+                <Text style={styles.miniVal} numberOfLines={1}>{pala.name ?? pala.brand ?? '—'}</Text>
+                {pala.brand && pala.name ? <Text style={styles.miniSub} numberOfLines={1}>{pala.brand}</Text> : null}
               </>
             ) : (
-              <Text style={[s.miniSub, { marginTop: 4 }]}>Sin registrar</Text>
+              <Text style={[styles.miniSub, { marginTop: 4 }]}>Sin registrar</Text>
             )}
           </View>
         </View>
 
-        {/* ── Partidos recientes ── */}
         {matches.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.secTitle}>Partidos recientes</Text>
-            <View style={[s.card, { marginTop: 10 }]}>
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>Partidos recientes</Text>
+            <View style={[styles.card, { marginTop: 10 }]}>
               {matches.map((m, idx) => {
                 const won = m.resultRecorded && (m.winners ?? []).some(w => w.id === profile.id);
                 const lost = m.resultRecorded && !(m.winners ?? []).some(w => w.id === profile.id);
@@ -266,15 +360,15 @@ export default function ProfileScreen() {
                     : 'Partido';
                 }
                 return (
-                  <TouchableOpacity key={m.id} style={[s.matchRow, idx < matches.length - 1 && s.matchBorder]} onPress={() => router.push(`/match/${m.id}`)} activeOpacity={0.75}>
-                    <View style={[s.resBadge, won ? s.resW : lost ? s.resL : s.resN]}>
-                      <Text style={[s.resTxt, won ? { color: colors.success } : lost ? { color: '#FF4B4B' } : { color: colors.textMuted }]}>
+                  <TouchableOpacity key={m.id} style={[styles.matchRow, idx < matches.length - 1 && styles.matchBorder]} onPress={() => router.push(`/match/${m.id}`)} activeOpacity={0.75}>
+                    <View style={[styles.resBadge, won ? styles.resW : lost ? styles.resL : styles.resN]}>
+                      <Text style={[styles.resTxt, won ? { color: colors.success } : lost ? { color: '#FF4B4B' } : { color: colors.textMuted }]}>
                         {won ? 'W' : lost ? 'L' : '—'}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={s.matchOpp} numberOfLines={1}>{oppLabel}</Text>
-                      <Text style={s.matchMeta}>{levelDisplay[m.level]} · {fmtDate(m.date)}</Text>
+                      <Text style={styles.matchOpp} numberOfLines={1}>{oppLabel}</Text>
+                      <Text style={styles.matchMeta}>{levelDisplay[m.level]} · {fmtDate(m.date)}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                   </TouchableOpacity>
@@ -284,45 +378,43 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* ── Equipamiento ── */}
         {equipment.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.secTitle}>Equipamiento</Text>
-            <View style={[s.card, { marginTop: 10 }]}>
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>Equipamiento</Text>
+            <View style={[styles.card, { marginTop: 10 }]}>
               {equipment.map((eq, idx) => (
-                <View key={eq.id} style={[s.equipRow, idx < equipment.length - 1 && s.equipBorder]}>
-                  <View style={[s.equipIcon, { backgroundColor: (eq.type === 'PALA' ? colors.primary : colors.ctaHighlight) + '18' }]}>
+                <View key={eq.id} style={[styles.equipRow, idx < equipment.length - 1 && styles.equipBorder]}>
+                  <View style={[styles.equipIcon, { backgroundColor: (eq.type === 'PALA' ? colors.primary : colors.accent) + '18' }]}>
                     <Ionicons
                       name={eq.type === 'PALA' ? 'tennisball-outline' : 'footsteps-outline'}
                       size={16}
-                      color={eq.type === 'PALA' ? colors.primary : colors.ctaHighlight}
+                      color={eq.type === 'PALA' ? colors.primary : colors.accent}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.equipName}>{eq.name ?? eq.brand ?? (eq.type === 'PALA' ? 'Pala' : 'Zapatilla')}</Text>
-                    {eq.brand && eq.name ? <Text style={s.equipBrand}>{eq.brand}</Text> : null}
+                    <Text style={styles.equipName}>{eq.name ?? eq.brand ?? (eq.type === 'PALA' ? 'Pala' : 'Zapatilla')}</Text>
+                    {eq.brand && eq.name ? <Text style={styles.equipBrand}>{eq.brand}</Text> : null}
                   </View>
-                  <Text style={s.equipTag}>{eq.type === 'PALA' ? 'Pala' : 'Zapatilla'}</Text>
+                  <Text style={styles.equipTag}>{eq.type === 'PALA' ? 'Pala' : 'Zapatilla'}</Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* ── Preferencias ── */}
         {(prefs.length > 0 || profile.dominantHand) && (
-          <View style={s.section}>
-            <Text style={s.secTitle}>Preferencias</Text>
-            <View style={s.prefRow}>
+          <View style={styles.section}>
+            <Text style={styles.secTitle}>Preferencias</Text>
+            <View style={styles.prefRow}>
               {prefs.map(p => (
-                <View key={p} style={s.prefPill}>
-                  <Text style={s.prefPillText}>{p}</Text>
+                <View key={p} style={styles.prefPill}>
+                  <Text style={styles.prefPillText}>{p}</Text>
                 </View>
               ))}
               {profile.dominantHand && (
-                <View style={[s.prefPill, s.prefPillHand]}>
+                <View style={[styles.prefPill, styles.prefPillHand]}>
                   <Ionicons name="hand-right-outline" size={12} color={colors.primary} />
-                  <Text style={[s.prefPillText, { color: colors.primary }]}>
+                  <Text style={[styles.prefPillText, { color: colors.primary }]}>
                     {profile.dominantHand === 'DERECHA' ? 'Derecha' : 'Izquierda'}
                   </Text>
                 </View>
@@ -333,14 +425,13 @@ export default function ProfileScreen() {
 
       </ScrollView>
 
-      {/* Recommend modal */}
       <Modal visible={showRecommend} transparent animationType="slide" onRequestClose={() => setShowRecommend(false)}>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>Valorar a {profile?.name.split(' ')[0]}</Text>
-            <Text style={s.modalSub}>¿Cómo fue tu experiencia jugando con esta persona?</Text>
-            <View style={s.starsRow}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Valorar a {profile?.name.split(' ')[0]}</Text>
+            <Text style={styles.modalSub}>¿Cómo fue tu experiencia jugando con esta persona?</Text>
+            <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setPendingStars(star)} activeOpacity={0.7}>
                   <Ionicons
@@ -351,7 +442,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <View style={s.modalActions}>
+            <View style={styles.modalActions}>
               <Button label="Cancelar" variant="outline" size="md" onPress={() => setShowRecommend(false)} style={{ flex: 1 }} />
               <Button
                 label="Enviar"
@@ -370,127 +461,3 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  navBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 8, paddingVertical: 6,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backBtn: { padding: 6, width: 40 },
-
-  scrollContent: { paddingBottom: 48 },
-
-  // Hero
-  hero: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 16,
-    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 12,
-  },
-  avatarGlow: {
-    borderWidth: 2.5, borderRadius: 52, padding: 2,
-    shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
-  },
-  heroRight: { flex: 1, paddingTop: 4 },
-  heroName: { color: colors.textPrimary, fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
-  heroBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7 },
-  lvlBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
-  lvlBadgeText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
-  availBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  availDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
-  availText: { color: colors.success, fontSize: 12, fontWeight: '600' },
-  heroMeta: { color: colors.textSecondary, fontSize: 13, marginTop: 7 },
-
-  bio: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, paddingHorizontal: 20, marginBottom: 14 },
-
-  actionRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
-
-  // Stats
-  statsCard: {
-    flexDirection: 'row', backgroundColor: colors.cardBg,
-    marginHorizontal: 20, borderRadius: 16, padding: 20,
-    alignItems: 'center', borderWidth: 1, borderColor: colors.border,
-    marginBottom: 12,
-  },
-  statBox: { flex: 1, alignItems: 'center', gap: 5 },
-  statVal: { color: colors.textPrimary, fontSize: 22, fontWeight: '800' },
-  statLbl: { color: colors.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
-  statDiv: { width: 1, height: 36, backgroundColor: colors.border },
-
-  // Seguidores
-  followCard: {
-    flexDirection: 'row', marginHorizontal: 20, marginBottom: 16,
-    backgroundColor: colors.cardBg, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
-  },
-  followItem: { flex: 1, alignItems: 'center', paddingVertical: 14, gap: 4 },
-  followVal: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  followLbl: { color: colors.textMuted, fontSize: 11 },
-  followDiv: { width: 1, backgroundColor: colors.border, marginVertical: 10 },
-
-  // Mini cards
-  miniRow: { flexDirection: 'row', gap: 12, marginHorizontal: 20, marginBottom: 20 },
-  miniCard: {
-    flex: 1, backgroundColor: colors.cardBg, borderRadius: 14,
-    borderWidth: 1, borderColor: colors.border, padding: 16,
-  },
-  miniTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  miniLbl: { color: colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
-  miniVal: { color: colors.textPrimary, fontSize: 26, fontWeight: '800' },
-  miniSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-
-  // Sections
-  section: { marginHorizontal: 20, marginBottom: 20 },
-  secTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  card: { backgroundColor: colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },
-
-  // Matches
-  matchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
-  matchBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  resBadge: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  resW: { backgroundColor: colors.success + '22' },
-  resL: { backgroundColor: '#FF4B4B22' },
-  resN: { backgroundColor: colors.border + '66' },
-  resTxt: { fontSize: 13, fontWeight: '800' },
-  matchOpp: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  matchMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-
-  // Equipment
-  equipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
-  equipBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  equipIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  equipName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  equipBrand: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  equipTag: { color: colors.textMuted, fontSize: 11 },
-
-  // Preferences
-  prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  prefPill: {
-    backgroundColor: colors.cardBg, borderRadius: 20,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 14, paddingVertical: 7,
-  },
-  prefPillText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
-  prefPillHand: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderColor: colors.primary + '40', backgroundColor: colors.primary + '10',
-  },
-
-  // Recommend modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 14,
-  },
-  modalHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: colors.border, alignSelf: 'center', marginBottom: 4,
-  },
-  modalTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
-  modalSub: { color: colors.textMuted, fontSize: 14, marginTop: -6 },
-  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingVertical: 8 },
-  modalActions: { flexDirection: 'row', gap: 10 },
-});

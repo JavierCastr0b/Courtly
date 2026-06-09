@@ -1,25 +1,14 @@
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as RNThemeProvider } from '@react-navigation/native';
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { CourtlyThemeProvider, useTheme } from '@/src/theme/ThemeContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
-};
-
-const CourtlyDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: '#0B0F14',
-    card: '#0D1117',
-    border: '#2C3038',
-    primary: '#1E90FF',
-    text: '#FFFFFF',
-  },
 };
 
 function SplashView() {
@@ -51,6 +40,7 @@ function SplashView() {
 
 function InnerLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isDark, colors } = useTheme();
   const [minDelayDone, setMinDelayDone] = useState(false);
 
   useEffect(() => {
@@ -60,8 +50,12 @@ function InnerLayout() {
 
   if (isLoading || !minDelayDone) return <SplashView />;
 
+  const navTheme = isDark
+    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.tabBar, border: colors.border, primary: colors.primary, text: colors.textPrimary } }
+    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.tabBar, border: colors.border, primary: colors.primary, text: colors.textPrimary } };
+
   return (
-    <ThemeProvider value={CourtlyDarkTheme}>
+    <RNThemeProvider value={navTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
@@ -72,15 +66,17 @@ function InnerLayout() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       {!isAuthenticated && <Redirect href="/auth/login" />}
-      <StatusBar style="light" />
-    </ThemeProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </RNThemeProvider>
   );
 }
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <InnerLayout />
+      <CourtlyThemeProvider>
+        <InnerLayout />
+      </CourtlyThemeProvider>
     </AuthProvider>
   );
 }
@@ -88,7 +84,7 @@ export default function RootLayout() {
 const splash = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0F14',
+    backgroundColor: '#050B18',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -108,6 +104,6 @@ const splash = StyleSheet.create({
     letterSpacing: 0.5,
   },
   logoDot: {
-    color: '#FF6B00',
+    color: '#14B8A6',
   },
 });

@@ -1,20 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/context/AuthContext';
-import { colors, levelColor } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import { levelColor } from '@/src/theme/colors';
+import type { Colors } from '@/src/theme/colors';
 import { Level } from '@/src/types';
 
 const LEVELS: { value: Level; label: string; cat: string }[] = [
@@ -25,9 +19,47 @@ const LEVELS: { value: Level; label: string; cat: string }[] = [
   { value: 'PROFESIONAL',  label: 'Profesional', cat: '1ra categoría' },
 ];
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    container: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 32 },
+    logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 28 },
+    logoImage: { width: 56, height: 56 },
+    logoText: { color: c.textPrimary, fontSize: 38, fontWeight: '700', letterSpacing: 0.5 },
+    logoDot: { color: c.accent },
+    title: { color: c.textPrimary, fontSize: 24, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+    subtitle: { color: c.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 36 },
+    form: { gap: 14 },
+    input: {
+      backgroundColor: c.secondary, borderWidth: 1, borderColor: c.border,
+      borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
+      color: c.textPrimary, fontSize: 16,
+    },
+    error: { color: '#FF4B4B', fontSize: 13, textAlign: 'center' },
+    btn: { backgroundColor: c.accent, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
+    btnDisabled: { opacity: 0.5 },
+    btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', paddingTop: 32 },
+    footerText: { color: c.textSecondary, fontSize: 15 },
+    footerLink: { color: c.primary, fontSize: 15, fontWeight: '700' },
+    levelLabel: { color: c.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 10 },
+    levelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+    levelCard: { width: '47%', backgroundColor: c.secondary, borderRadius: 10, borderWidth: 1.5, borderColor: c.border, padding: 12, gap: 3 },
+    levelName: { color: c.textPrimary, fontSize: 14, fontWeight: '700' },
+    levelSub: { color: c.textMuted, fontSize: 11 },
+    handRow: { flexDirection: 'row', gap: 10 },
+    handBtn: { flex: 1, backgroundColor: c.secondary, borderRadius: 10, borderWidth: 1.5, borderColor: c.border, paddingVertical: 12, alignItems: 'center' },
+    handBtnActive: { borderColor: c.accent, backgroundColor: c.accent + '18' },
+    handText: { color: c.textSecondary, fontSize: 14, fontWeight: '600' },
+    handTextActive: { color: c.accent },
+  });
+}
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -47,7 +79,6 @@ export default function RegisterScreen() {
     if (!password) { setError('Ingresa una contraseña.'); return; }
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
     if (password !== confirmPassword) { setError('Las contraseñas no coinciden.'); return; }
-
     setLoading(true);
     try {
       await register(name, username, email, password, selectedLevel, dominantHand);
@@ -60,71 +91,20 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <View style={styles.logoRow}>
-            <Image
-              source={require('@/assets/images/LOGO_INICIAL_COURTLY.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            <Text style={styles.logoText}>
-              Courtly<Text style={styles.logoDot}>.</Text>
-            </Text>
+            <Image source={require('@/assets/images/LOGO_INICIAL_COURTLY.png')} style={styles.logoImage} resizeMode="contain" />
+            <Text style={styles.logoText}>Courtly<Text style={styles.logoDot}>.</Text></Text>
           </View>
           <Text style={styles.title}>Crea tu cuenta</Text>
           <Text style={styles.subtitle}>Únete a la comunidad</Text>
-
           <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre completo"
-              placeholderTextColor={colors.textMuted}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre de usuario"
-              placeholderTextColor={colors.textMuted}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electrónico"
-              placeholderTextColor={colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              placeholderTextColor={colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmar contraseña"
-              placeholderTextColor={colors.textMuted}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
+            <TextInput style={styles.input} placeholder="Nombre completo" placeholderTextColor={colors.textMuted} value={name} onChangeText={setName} autoCapitalize="words" />
+            <TextInput style={styles.input} placeholder="Nombre de usuario" placeholderTextColor={colors.textMuted} value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} />
+            <TextInput style={styles.input} placeholder="Correo electrónico" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
+            <TextInput style={styles.input} placeholder="Contraseña" placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword} secureTextEntry />
+            <TextInput style={styles.input} placeholder="Confirmar contraseña" placeholderTextColor={colors.textMuted} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
 
             <Text style={styles.levelLabel}>¿Cuál es tu nivel de juego?</Text>
             <View style={styles.levelGrid}>
@@ -162,20 +142,10 @@ export default function RegisterScreen() {
             </View>
 
             {!!error && <Text style={styles.error}>{error}</Text>}
-
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={handleRegister}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.btnText}>Crear cuenta</Text>
-              }
+            <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleRegister} disabled={loading} activeOpacity={0.8}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.btnText}>Crear cuenta</Text>}
             </TouchableOpacity>
           </View>
-
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.back()}>
@@ -187,152 +157,3 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 32,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 28,
-  },
-  logoImage: {
-    width: 56,
-    height: 56,
-  },
-  logoText: {
-    color: colors.textPrimary,
-    fontSize: 38,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  logoDot: {
-    color: colors.ctaHighlight,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 36,
-  },
-  form: {
-    gap: 14,
-  },
-  input: {
-    backgroundColor: colors.secondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: colors.textPrimary,
-    fontSize: 16,
-  },
-  error: {
-    color: '#FF4B4B',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  btn: {
-    backgroundColor: colors.ctaHighlight,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  btnDisabled: {
-    opacity: 0.5,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 'auto',
-    paddingTop: 32,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-  },
-  footerLink: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  levelLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  levelGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
-  },
-  levelCard: {
-    width: '47%',
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    padding: 12,
-    gap: 3,
-  },
-  levelName: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  levelSub: {
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  handRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  handBtn: {
-    flex: 1,
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  handBtnActive: {
-    borderColor: colors.ctaHighlight,
-    backgroundColor: colors.ctaHighlight + '18',
-  },
-  handText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  handTextActive: {
-    color: colors.ctaHighlight,
-  },
-});

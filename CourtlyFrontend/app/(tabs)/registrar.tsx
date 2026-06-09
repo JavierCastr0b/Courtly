@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { colors } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import type { Colors } from '@/src/theme/colors';
 import { Court, Level } from '@/src/types';
 import { courtsApi } from '@/src/api/courts';
 import { matchesApi } from '@/src/api/matches';
@@ -69,7 +70,141 @@ function resolveTime(label: string): string {
   return `${String(h).padStart(2, '0')}:${m}`;
 }
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    header: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: c.border },
+    modeSwitcher: { flexDirection: 'row', backgroundColor: c.secondary, borderRadius: 10, padding: 3, gap: 3 },
+    modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 8 },
+    modeBtnActive: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.border },
+    modeBtnText: { color: c.textSecondary, fontSize: 14, fontWeight: '500' },
+    modeBtnTextActive: { color: c.primary, fontWeight: '600' },
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 40 },
+    sectionLabel: {
+      color: c.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 10,
+      marginTop: 4,
+    },
+    courtItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.secondary,
+      borderRadius: 10,
+      padding: 13,
+      marginBottom: 8,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+      gap: 10,
+    },
+    courtItemSelected: { borderColor: c.primary, backgroundColor: c.primary + '12' },
+    courtIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.border, alignItems: 'center', justifyContent: 'center' },
+    courtName: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
+    courtMeta: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    pillScroll: { marginBottom: 18 },
+    pillRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+    pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.secondary, borderWidth: 1.5, borderColor: 'transparent' },
+    pillActive: { borderColor: c.primary, backgroundColor: c.primary + '18' },
+    pillText: { color: c.textSecondary, fontSize: 14, fontWeight: '500' },
+    pillTextActive: { color: c.primary, fontWeight: '600' },
+    levelList: { gap: 6, marginBottom: 20 },
+    levelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.secondary,
+      borderRadius: 10,
+      padding: 13,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+    },
+    levelRowActive: { borderColor: c.primary, backgroundColor: c.primary + '10' },
+    levelRowLabel: { color: c.textSecondary, fontSize: 14, fontWeight: '600' },
+    levelRowSub: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.secondary,
+      borderRadius: 10,
+      padding: 4,
+      alignSelf: 'flex-start',
+      marginBottom: 20,
+      gap: 8,
+    },
+    stepperBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: c.cardBg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.border },
+    stepperValue: { color: c.textPrimary, fontSize: 18, fontWeight: '700', minWidth: 36, textAlign: 'center' },
+    textInput: {
+      backgroundColor: c.secondary,
+      borderRadius: 10,
+      padding: 14,
+      color: c.textPrimary,
+      fontSize: 15,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: c.border,
+      textAlignVertical: 'top',
+    },
+    preview: {
+      backgroundColor: c.primary + '12',
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: c.primary + '44',
+      gap: 8,
+      marginBottom: 20,
+    },
+    previewTitle: { color: c.primary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
+    previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    previewText: { color: c.textSecondary, fontSize: 13 },
+    publishBtn: { marginTop: 4 },
+    matchTypeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    matchTypeCard: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: c.secondary, borderRadius: 12,
+      paddingVertical: 16, gap: 6,
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    matchTypeCardActive: { borderColor: c.primary, backgroundColor: c.primary + '12' },
+    matchTypeLabel: { color: c.textSecondary, fontSize: 15, fontWeight: '700' },
+    matchTypeLabelActive: { color: c.primary },
+    matchTypeSub: { color: c.textMuted, fontSize: 12 },
+    stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+    stepperHint: { color: c.textSecondary, fontSize: 14 },
+    stepperHintVal: { color: c.textPrimary, fontWeight: '700' },
+    photoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    photoBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      backgroundColor: c.secondary, borderRadius: 10, paddingVertical: 14,
+      borderWidth: 1.5, borderColor: c.primary + '50',
+    },
+    photoBtnText: { color: c.primary, fontSize: 14, fontWeight: '600' },
+    photoPreviewBox: { position: 'relative', marginBottom: 20, borderRadius: 12, overflow: 'hidden' },
+    photoPreview: { width: '100%', height: 200, borderRadius: 12 },
+    photoRemove: { position: 'absolute', top: 8, right: 8 },
+    courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
+    courtLoaderText: { color: c.textMuted, fontSize: 14 },
+    noCourtsBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      backgroundColor: c.secondary,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    noCourtsText: { color: c.textMuted, fontSize: 13, flex: 1, lineHeight: 19 },
+  });
+}
+
 export default function RegistrarScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [mode, setMode] = useState<Mode>('match');
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
@@ -334,7 +469,9 @@ export default function RegistrarScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
-                <Text style={styles.stepperHint}>+ tú = <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{players + 1} total</Text></Text>
+                <Text style={styles.stepperHint}>
+                  + tú = <Text style={styles.stepperHintVal}>{players + 1} total</Text>
+                </Text>
               </View>
 
               <Text style={styles.sectionLabel}>Descripción (opcional)</Text>
@@ -442,131 +579,3 @@ export default function RegistrarScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  modeSwitcher: { flexDirection: 'row', backgroundColor: colors.secondary, borderRadius: 10, padding: 3, gap: 3 },
-  modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 8 },
-  modeBtnActive: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border },
-  modeBtnText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
-  modeBtnTextActive: { color: colors.primary, fontWeight: '600' },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 40 },
-  sectionLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    marginTop: 4,
-  },
-  courtItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 13,
-    marginBottom: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    gap: 10,
-  },
-  courtItemSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
-  courtIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  courtName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  courtMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  pillScroll: { marginBottom: 18 },
-  pillRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1.5, borderColor: 'transparent' },
-  pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
-  pillText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
-  pillTextActive: { color: colors.primary, fontWeight: '600' },
-  levelList: { gap: 6, marginBottom: 20 },
-  levelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 13,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  levelRowActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  levelRowLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  levelRowSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 20,
-    gap: 8,
-  },
-  stepperBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: colors.cardBg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  stepperValue: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', minWidth: 36, textAlign: 'center' },
-  textInput: {
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 14,
-    color: colors.textPrimary,
-    fontSize: 15,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    textAlignVertical: 'top',
-  },
-  preview: {
-    backgroundColor: colors.primary + '12',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.primary + '44',
-    gap: 8,
-    marginBottom: 20,
-  },
-  previewTitle: { color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
-  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  previewText: { color: colors.textSecondary, fontSize: 13 },
-  publishBtn: { marginTop: 4 },
-  matchTypeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  matchTypeCard: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.secondary, borderRadius: 12,
-    paddingVertical: 16, gap: 6,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  matchTypeCardActive: { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
-  matchTypeLabel: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
-  matchTypeLabelActive: { color: colors.primary },
-  matchTypeSub: { color: colors.textMuted, fontSize: 12 },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  stepperHint: { color: colors.textSecondary, fontSize: 14 },
-  photoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  photoBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.secondary, borderRadius: 10, paddingVertical: 14,
-    borderWidth: 1.5, borderColor: colors.primary + '50',
-  },
-  photoBtnText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-  photoPreviewBox: { position: 'relative', marginBottom: 20, borderRadius: 12, overflow: 'hidden' },
-  photoPreview: { width: '100%', height: 200, borderRadius: 12 },
-  photoRemove: { position: 'absolute', top: 8, right: 8 },
-  courtLoader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 4, marginBottom: 8 },
-  courtLoaderText: { color: colors.textMuted, fontSize: 14 },
-  noCourtsBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noCourtsText: { color: colors.textMuted, fontSize: 13, flex: 1, lineHeight: 19 },
-});

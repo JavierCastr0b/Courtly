@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 const PALETTE = [
   '#1E90FF',
-  '#FF6B00',
-  '#34C759',
+  '#14B8A6',
+  '#22C55E',
   '#FF3B30',
   '#AF52DE',
-  '#FF9500',
+  '#F59E0B',
   '#5AC8FA',
 ];
 
@@ -33,6 +33,7 @@ interface AvatarProps {
 }
 
 export function Avatar({ name, initials, size = 44, available = false, style }: AvatarProps) {
+  const { colors } = useTheme();
   initials = initials ?? computeInitials(name);
   const bg = getColor(name);
   const fontSize = size * 0.38;
@@ -47,6 +48,20 @@ export function Avatar({ name, initials, size = 44, available = false, style }: 
       >
         <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
       </View>
+      {available && (
+        <View style={[
+          styles.badge,
+          {
+            width: size * 0.27,
+            height: size * 0.27,
+            borderRadius: size * 0.135,
+            bottom: 0,
+            right: 0,
+            backgroundColor: colors.success,
+            borderColor: colors.background,
+          },
+        ]} />
+      )}
     </View>
   );
 }
@@ -66,8 +81,6 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: colors.background,
   },
 });

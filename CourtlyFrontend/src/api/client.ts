@@ -1,18 +1,32 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const BASE_URL = 'http://192.168.18.48:8080/api';
+export const BASE_URL = 'http://192.168.1.39:8080/api';
 const TOKEN_KEY = '@courtly_token';
 
+// Cache token in memory — avoids concurrent AsyncStorage reads per-request
+let _cachedToken: string | null | undefined = undefined;
+let _tokenPromise: Promise<string | null> | null = null;
+
 export async function getToken(): Promise<string | null> {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  if (_cachedToken !== undefined) return _cachedToken;
+  if (!_tokenPromise) {
+    _tokenPromise = AsyncStorage.getItem(TOKEN_KEY).then(t => {
+      _cachedToken = t;
+      _tokenPromise = null;
+      return t;
+    });
+  }
+  return _tokenPromise;
 }
 
 export async function setToken(token: string): Promise<void> {
+  _cachedToken = token;
   return AsyncStorage.setItem(TOKEN_KEY, token);
 }
 
 export async function removeToken(): Promise<void> {
+  _cachedToken = null;
   return AsyncStorage.removeItem(TOKEN_KEY);
 }
 

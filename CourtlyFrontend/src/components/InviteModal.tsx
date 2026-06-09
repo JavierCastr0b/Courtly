@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -14,7 +14,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { User, Court } from '../types';
 import { courtsApi } from '../api/courts';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import type { Colors } from '../theme/colors';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 
@@ -36,10 +37,67 @@ export interface InviteData {
 
 const TIME_OPTIONS = ['6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo'];
-
 const OTROS_ID = '__otros__';
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    handle: { width: 36, height: 4, backgroundColor: c.border, borderRadius: 2, alignSelf: 'center', marginTop: 12 },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingVertical: 16,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    title: { color: c.textPrimary, fontSize: 18, fontWeight: '700' },
+    closeBtn: { padding: 4 },
+    body: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+    userRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: c.secondary, borderRadius: 12, padding: 14, marginBottom: 20,
+    },
+    userName: { color: c.textPrimary, fontWeight: '700', fontSize: 15 },
+    userLevel: { color: c.textSecondary, fontSize: 13, marginTop: 2 },
+    sectionLabel: {
+      color: c.textSecondary, fontSize: 13, fontWeight: '600',
+      marginBottom: 10, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    optionItem: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: c.secondary, borderRadius: 10, padding: 12, marginBottom: 8,
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    optionSelected: { borderColor: c.primary, backgroundColor: c.primary + '15' },
+    optionInner: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    optionText: { color: c.textSecondary, fontSize: 14, fontWeight: '500' },
+    optionTextActive: { color: c.primary, fontWeight: '600' },
+    optionSub: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    pill: {
+      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+      backgroundColor: c.secondary, borderWidth: 1.5, borderColor: 'transparent',
+    },
+    pillActive: { borderColor: c.primary, backgroundColor: c.primary + '20' },
+    pillText: { color: c.textSecondary, fontSize: 14, fontWeight: '500' },
+    pillTextActive: { color: c.primary, fontWeight: '600' },
+    textInput: {
+      backgroundColor: c.secondary, borderRadius: 10, padding: 14,
+      color: c.textPrimary, fontSize: 14, marginBottom: 16,
+      minHeight: 80, textAlignVertical: 'top',
+      borderWidth: 1, borderColor: c.border,
+    },
+    noCourtsBox: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+      backgroundColor: c.secondary, borderRadius: 10, padding: 12,
+      marginBottom: 8, borderWidth: 1, borderColor: c.border,
+    },
+    noCourtsText: { color: c.textMuted, fontSize: 13, flex: 1, lineHeight: 18 },
+  });
+}
+
 export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const [selectedCourt, setSelectedCourt] = useState('');
   const [customLocation, setCustomLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState('Hoy');
@@ -72,18 +130,9 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
   if (!user) return null;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}
-      >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
         <View style={styles.handle} />
-
         <View style={styles.header}>
           <Text style={styles.title}>Invitar a partido</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -116,21 +165,13 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
                 style={[styles.optionItem, selectedCourt === court.id && styles.optionSelected]}
               >
                 <View style={styles.optionInner}>
-                  <Ionicons
-                    name="tennisball-outline"
-                    size={16}
-                    color={selectedCourt === court.id ? colors.primary : colors.textSecondary}
-                  />
+                  <Ionicons name="tennisball-outline" size={16} color={selectedCourt === court.id ? colors.primary : colors.textSecondary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.optionText, selectedCourt === court.id && styles.optionTextActive]}>
-                      {court.name}
-                    </Text>
+                    <Text style={[styles.optionText, selectedCourt === court.id && styles.optionTextActive]}>{court.name}</Text>
                     <Text style={styles.optionSub}>{court.address}</Text>
                   </View>
                 </View>
-                {selectedCourt === court.id && (
-                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                )}
+                {selectedCourt === court.id && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
               </TouchableOpacity>
             ))
           )}
@@ -139,18 +180,10 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
             style={[styles.optionItem, selectedCourt === OTROS_ID && styles.optionSelected]}
           >
             <View style={styles.optionInner}>
-              <Ionicons
-                name="location-outline"
-                size={16}
-                color={selectedCourt === OTROS_ID ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[styles.optionText, selectedCourt === OTROS_ID && styles.optionTextActive]}>
-                Otros
-              </Text>
+              <Ionicons name="location-outline" size={16} color={selectedCourt === OTROS_ID ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.optionText, selectedCourt === OTROS_ID && styles.optionTextActive]}>Otros</Text>
             </View>
-            {selectedCourt === OTROS_ID && (
-              <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-            )}
+            {selectedCourt === OTROS_ID && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
           </TouchableOpacity>
           {selectedCourt === OTROS_ID && (
             <TextInput
@@ -165,11 +198,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
           <Text style={styles.sectionLabel}>Fecha</Text>
           <View style={styles.pillRow}>
             {DATE_OPTIONS.map((d) => (
-              <TouchableOpacity
-                key={d}
-                onPress={() => setSelectedDate(d)}
-                style={[styles.pill, selectedDate === d && styles.pillActive]}
-              >
+              <TouchableOpacity key={d} onPress={() => setSelectedDate(d)} style={[styles.pill, selectedDate === d && styles.pillActive]}>
                 <Text style={[styles.pillText, selectedDate === d && styles.pillTextActive]}>{d}</Text>
               </TouchableOpacity>
             ))}
@@ -178,11 +207,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
           <Text style={styles.sectionLabel}>Hora</Text>
           <View style={styles.pillRow}>
             {TIME_OPTIONS.map((t) => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setSelectedTime(t)}
-                style={[styles.pill, selectedTime === t && styles.pillActive]}
-              >
+              <TouchableOpacity key={t} onPress={() => setSelectedTime(t)} style={[styles.pill, selectedTime === t && styles.pillActive]}>
                 <Text style={[styles.pillText, selectedTime === t && styles.pillTextActive]}>{t}</Text>
               </TouchableOpacity>
             ))}
@@ -191,11 +216,7 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
           <Text style={styles.sectionLabel}>Número de jugadores</Text>
           <View style={styles.pillRow}>
             {['2', '4'].map((n) => (
-              <TouchableOpacity
-                key={n}
-                onPress={() => setPlayers(n)}
-                style={[styles.pill, players === n && styles.pillActive]}
-              >
+              <TouchableOpacity key={n} onPress={() => setPlayers(n)} style={[styles.pill, players === n && styles.pillActive]}>
                 <Text style={[styles.pillText, players === n && styles.pillTextActive]}>{n} jugadores</Text>
               </TouchableOpacity>
             ))}
@@ -212,167 +233,9 @@ export function InviteModal({ visible, user, onClose, onSend }: InviteModalProps
             numberOfLines={3}
           />
 
-          <Button
-            label="Enviar invitación"
-            variant="primary"
-            fullWidth
-            size="lg"
-            onPress={handleSend}
-            style={{ marginTop: 8, marginBottom: 32 }}
-          />
+          <Button label="Enviar invitación" variant="primary" fullWidth size="lg" onPress={handleSend} style={{ marginTop: 8, marginBottom: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  body: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.secondary,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-  },
-  userName: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  userLevel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  sectionLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 10,
-    marginTop: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  optionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '15',
-  },
-  optionInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  optionText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  optionTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  optionSub: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.secondary,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  pillActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '20',
-  },
-  pillText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  pillTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  textInput: {
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 14,
-    color: colors.textPrimary,
-    fontSize: 14,
-    marginBottom: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noCourtsBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noCourtsText: { color: colors.textMuted, fontSize: 13, flex: 1, lineHeight: 18 },
-});

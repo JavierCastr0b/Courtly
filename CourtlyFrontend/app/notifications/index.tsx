@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert,
-} from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import type { Colors } from '@/src/theme/colors';
 import { Invitation } from '@/src/types';
 import { invitationsApi } from '@/src/api/invitations';
 import { notificationsApi, AppNotification } from '@/src/api/notifications';
@@ -23,8 +21,56 @@ function timeAgo(iso: string) {
   return `hace ${Math.floor(hrs / 24)}d`;
 }
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 12, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    backBtn: { padding: 4, width: 40 },
+    headerTitle: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+    readAllBtn: { paddingHorizontal: 4, paddingVertical: 6, width: 60, alignItems: 'flex-end' },
+    readAllText: { color: c.primary, fontSize: 13, fontWeight: '600' },
+    loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 60 },
+    emptyTitle: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+    emptyText: { color: c.textMuted, fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
+    content: { paddingBottom: 40 },
+    section: { paddingHorizontal: 18, marginTop: 20, gap: 8 },
+    sectionTitle: { color: c.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 },
+    notifCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: c.cardBg, borderRadius: 14, padding: 12,
+      borderWidth: 1, borderColor: c.border,
+    },
+    notifUnread: { borderColor: c.primary + '40', backgroundColor: c.primary + '08' },
+    notifAvatarWrap: { position: 'relative' },
+    notifIconBadge: {
+      position: 'absolute', bottom: -2, right: -2,
+      width: 18, height: 18, borderRadius: 9,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: c.background,
+    },
+    notifText: { color: c.textSecondary, fontSize: 14, lineHeight: 20 },
+    notifBold: { color: c.textPrimary, fontWeight: '700' },
+    notifTime: { color: c.textMuted, fontSize: 12, marginTop: 3 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
+    card: { backgroundColor: c.cardBg, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: c.border, gap: 12 },
+    cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+    cardName: { color: c.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+    metaText: { color: c.textSecondary, fontSize: 12 },
+    message: { color: c.primary, fontSize: 12, fontStyle: 'italic', marginTop: 4 },
+    actions: { flexDirection: 'row', gap: 8 },
+  });
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,10 +80,7 @@ export default function NotificationsScreen() {
     Promise.all([
       invitationsApi.getPending().catch(() => [] as Invitation[]),
       notificationsApi.getAll().catch(() => [] as AppNotification[]),
-    ]).then(([inv, nts]) => {
-      setInvitations(inv);
-      setNotifs(nts);
-    }).finally(() => setLoading(false));
+    ]).then(([inv, nts]) => { setInvitations(inv); setNotifs(nts); }).finally(() => setLoading(false));
   }, []);
 
   useFocusEffect(load);
@@ -94,9 +137,7 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loader}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
+        <View style={styles.loader}><ActivityIndicator color={colors.primary} size="large" /></View>
       ) : isEmpty ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
@@ -105,18 +146,11 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-          {/* Follow notifications */}
           {notifs.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Actividad</Text>
               {notifs.map(n => (
-                <TouchableOpacity
-                  key={n.id}
-                  style={[styles.notifCard, !n.read && styles.notifUnread]}
-                  onPress={() => handleNotifPress(n)}
-                  activeOpacity={0.75}
-                >
+                <TouchableOpacity key={n.id} style={[styles.notifCard, !n.read && styles.notifUnread]} onPress={() => handleNotifPress(n)} activeOpacity={0.75}>
                   {(() => {
                     const { icon, color, text } = notifMeta(n);
                     return (
@@ -142,8 +176,6 @@ export default function NotificationsScreen() {
               ))}
             </View>
           )}
-
-          {/* Pending invitations */}
           {invitations.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Invitaciones pendientes</Text>
@@ -172,61 +204,8 @@ export default function NotificationsScreen() {
               ))}
             </View>
           )}
-
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backBtn: { padding: 4, width: 40 },
-  headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-  readAllBtn: { paddingHorizontal: 4, paddingVertical: 6, width: 60, alignItems: 'flex-end' },
-  readAllText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 60 },
-  emptyTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-  emptyText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
-  content: { paddingBottom: 40 },
-  section: { paddingHorizontal: 18, marginTop: 20, gap: 8 },
-  sectionTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 },
-
-  // Follow notification row
-  notifCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.cardBg, borderRadius: 14,
-    padding: 12, borderWidth: 1, borderColor: colors.border,
-  },
-  notifUnread: { borderColor: colors.primary + '40', backgroundColor: colors.primary + '08' },
-  notifAvatarWrap: { position: 'relative' },
-  notifIconBadge: {
-    position: 'absolute', bottom: -2, right: -2,
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: colors.background,
-  },
-  notifText: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
-  notifBold: { color: colors.textPrimary, fontWeight: '700' },
-  notifTime: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
-
-  // Invitation card
-  card: {
-    backgroundColor: colors.cardBg, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: colors.border, gap: 12,
-  },
-  cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  cardName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
-  metaText: { color: colors.textSecondary, fontSize: 12 },
-  message: { color: colors.primary, fontSize: 12, fontStyle: 'italic', marginTop: 4 },
-  actions: { flexDirection: 'row', gap: 8 },
-});

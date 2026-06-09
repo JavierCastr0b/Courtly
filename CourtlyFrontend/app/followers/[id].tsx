@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import type { Colors } from '@/src/theme/colors';
 import { User } from '@/src/types';
 import { usersApi } from '@/src/api/users';
 import { Avatar } from '@/src/components/Avatar';
@@ -17,9 +18,33 @@ const TITLES: Record<Mode, string> = {
   friends: 'Amigos',
 };
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 12, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    backBtn: { padding: 4, width: 40 },
+    headerTitle: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+    loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    list: { paddingVertical: 8, paddingHorizontal: 18 },
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+    rowInfo: { flex: 1 },
+    name: { color: c.textPrimary, fontSize: 15, fontWeight: '600' },
+    username: { color: c.textSecondary, fontSize: 13, marginTop: 2 },
+    separator: { height: 1, backgroundColor: c.border },
+    empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
+    emptyText: { color: c.textMuted, fontSize: 14 },
+  });
+}
+
 export default function FollowersScreen() {
   const { id, mode } = useLocalSearchParams<{ id: string; mode: Mode }>();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [users, setUsers] = useState<User[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -99,23 +124,3 @@ export default function FollowersScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backBtn: { padding: 4, width: 40 },
-  headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingVertical: 8, paddingHorizontal: 18 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
-  rowInfo: { flex: 1 },
-  name: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  username: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
-  separator: { height: 1, backgroundColor: colors.border },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { color: colors.textMuted, fontSize: 14 },
-});

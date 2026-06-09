@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Modal, Platform, TextInput,
@@ -8,7 +8,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import { colors, levelColor, levelDisplay } from '@/src/theme/colors';
+import { levelDisplay } from '@/src/theme/colors';
+import { useTheme } from '@/src/theme/ThemeContext';
+import type { Colors } from '@/src/theme/colors';
 import { Match, User } from '@/src/types';
 import { matchesApi, MatchSet } from '@/src/api/matches';
 import { useAuth } from '@/src/context/AuthContext';
@@ -21,7 +23,7 @@ const isDoubles = (m: Match) =>
   (m.matchType ?? '').toUpperCase().includes('DOBLES') ||
   (m.matchType ?? '').toUpperCase().includes('DOUBLE');
 
-// ─── Set score row with +/- buttons ───────────────────────────────────────
+// ─── Sub-components (call useTheme directly) ──────────────────────────────────
 function SetRow({
   index, set, onChange, onRemove,
 }: {
@@ -30,37 +32,37 @@ function SetRow({
   onChange: (s: MatchSet) => void;
   onRemove: () => void;
 }) {
+  const { colors } = useTheme();
   const adj = (side: 'a' | 'b', delta: number) =>
     onChange({ ...set, [side]: Math.max(0, set[side] + delta) });
 
   return (
-    <View style={st.setRow}>
-      <Text style={st.setLabel}>Set {index + 1}</Text>
-      <View style={st.setScore}>
-        <TouchableOpacity style={st.adj} onPress={() => adj('a', -1)}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', width: 38 }}>Set {index + 1}</Text>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <TouchableOpacity style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }} onPress={() => adj('a', -1)}>
           <Ionicons name="remove" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={st.setNum}>{set.a}</Text>
-        <TouchableOpacity style={st.adj} onPress={() => adj('a', 1)}>
+        <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', minWidth: 26, textAlign: 'center' }}>{set.a}</Text>
+        <TouchableOpacity style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }} onPress={() => adj('a', 1)}>
           <Ionicons name="add" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={st.setVs}>–</Text>
-        <TouchableOpacity style={st.adj} onPress={() => adj('b', -1)}>
+        <Text style={{ color: colors.textMuted, fontSize: 16, marginHorizontal: 2 }}>–</Text>
+        <TouchableOpacity style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }} onPress={() => adj('b', -1)}>
           <Ionicons name="remove" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={st.setNum}>{set.b}</Text>
-        <TouchableOpacity style={st.adj} onPress={() => adj('b', 1)}>
+        <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', minWidth: 26, textAlign: 'center' }}>{set.b}</Text>
+        <TouchableOpacity style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }} onPress={() => adj('b', 1)}>
           <Ionicons name="add" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={onRemove} style={st.removeSet}>
+      <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
         <Ionicons name="close-circle-outline" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Team column ──────────────────────────────────────────────────────────
 function TeamColumn({
   label, players, guests, winners, accent, onPress,
 }: {
@@ -71,34 +73,214 @@ function TeamColumn({
   accent: string;
   onPress?: (u: User) => void;
 }) {
+  const { colors } = useTheme();
   return (
-    <View style={[st.teamCol, { borderColor: accent + '50' }]}>
-      <Text style={[st.teamLabel, { color: accent }]}>{label}</Text>
+    <View style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderColor: accent + '50', padding: 10, gap: 8 }}>
+      <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: accent }}>{label}</Text>
       {players.map(p => (
-        <TouchableOpacity key={p.id} style={st.teamPlayer} onPress={() => onPress?.(p)} activeOpacity={0.75}>
+        <TouchableOpacity key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} onPress={() => onPress?.(p)} activeOpacity={0.75}>
           <Avatar name={p.name} size={28} />
-          <Text style={st.teamPlayerName} numberOfLines={1}>{p.name.split(' ')[0]}</Text>
+          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{p.name.split(' ')[0]}</Text>
           {winners.some(w => w.id === p.id) && (
             <Ionicons name="trophy" size={12} color="#FFB800" />
           )}
         </TouchableOpacity>
       ))}
       {guests.map((g, i) => (
-        <View key={`g${i}`} style={st.teamPlayer}>
-          <View style={st.guestAvatar}>
+        <View key={`g${i}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="person-outline" size={14} color={colors.textMuted} />
           </View>
-          <Text style={[st.teamPlayerName, { color: colors.textMuted }]} numberOfLines={1}>{g}</Text>
+          <Text style={{ flex: 1, color: colors.textMuted, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{g}</Text>
         </View>
       ))}
     </View>
   );
 }
 
+function makeStyles(c: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 12, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    backBtn: { padding: 4, width: 40 },
+    headerTitle: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+    deleteBtn: { padding: 4, width: 40, alignItems: 'flex-end' },
+    loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    content: { paddingBottom: 60 },
+    organizerRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingVertical: 20,
+    },
+    organizerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    organizerLabel: { color: c.textMuted, fontSize: 11, fontWeight: '500' },
+    organizerName: { color: c.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 2 },
+    infoCard: {
+      marginHorizontal: 20, backgroundColor: c.cardBg,
+      borderRadius: 14, borderWidth: 1, borderColor: c.border,
+      padding: 16, marginBottom: 14,
+    },
+    infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+    infoIcon: {
+      width: 36, height: 36, borderRadius: 10,
+      backgroundColor: c.primary + '18',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    infoLabel: { color: c.textMuted, fontSize: 11, fontWeight: '500' },
+    infoValue: { color: c.textPrimary, fontSize: 15, fontWeight: '600', marginTop: 2 },
+    infoSub: { color: c.textSecondary, fontSize: 12, marginTop: 2 },
+    infoDivider: { height: 1, backgroundColor: c.border, marginVertical: 14 },
+    descCard: {
+      marginHorizontal: 20, backgroundColor: c.cardBg,
+      borderRadius: 14, borderWidth: 1, borderColor: c.border,
+      padding: 16, marginBottom: 14,
+    },
+    descText: { color: c.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 8 },
+    sectionTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+    resultCard: {
+      marginHorizontal: 20, backgroundColor: '#FFB80010',
+      borderRadius: 14, borderWidth: 1, borderColor: '#FFB80040',
+      padding: 16, marginBottom: 14, gap: 8,
+    },
+    resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    resultTitle: { color: '#FFB800', fontSize: 14, fontWeight: '700' },
+    resultScore: { color: c.textPrimary, fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+    winnersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    winnerChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      backgroundColor: '#FFB80018', borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderWidth: 1, borderColor: '#FFB80040',
+    },
+    winnerChipName: { color: '#FFB800', fontSize: 13, fontWeight: '700' },
+    spotsCard: {
+      marginHorizontal: 20, backgroundColor: c.cardBg,
+      borderRadius: 14, borderWidth: 1, borderColor: c.border,
+      padding: 16, marginBottom: 14,
+    },
+    spotsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    spotsCount: { color: c.textSecondary, fontSize: 14, fontWeight: '700' },
+    spotsCountFull: { color: c.accent },
+    spotsBar: { flexDirection: 'row', gap: 6, marginBottom: 16 },
+    spotDot: { height: 6, flex: 1, borderRadius: 3, backgroundColor: c.border },
+    spotFilled: { backgroundColor: c.primary },
+    teamsRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+    teamVsSep: { alignItems: 'center', paddingTop: 28 },
+    teamVsText: { color: c.textMuted, fontSize: 12, fontWeight: '800' },
+    participantsList: { gap: 2 },
+    participantRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderRadius: 10 },
+    participantName: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
+    participantLevel: { color: c.textSecondary, fontSize: 12, marginTop: 1 },
+    organizerBadge: {
+      backgroundColor: c.primary + '22', borderRadius: 6,
+      paddingHorizontal: 7, paddingVertical: 3,
+    },
+    organizerBadgeText: { color: c.primary, fontSize: 11, fontWeight: '700' },
+    emptySlot: { opacity: 0.5 },
+    emptyAvatar: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: c.secondary, borderWidth: 1,
+      borderColor: c.border, borderStyle: 'dashed',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    emptySlotText: { color: c.textMuted, fontSize: 14 },
+    pickTeamBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      marginHorizontal: 20, marginBottom: 10,
+      backgroundColor: c.primary + '12', borderRadius: 10,
+      borderWidth: 1, borderColor: c.primary + '40',
+      paddingHorizontal: 14, paddingVertical: 10,
+    },
+    pickTeamText: { color: c.primary, fontSize: 14, fontWeight: '600' },
+    actionBtn: { marginHorizontal: 20, marginTop: 6, marginBottom: 10 },
+    finishedBanner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      marginHorizontal: 20, marginTop: 6, marginBottom: 10,
+      backgroundColor: c.cardBg, borderRadius: 12,
+      borderWidth: 1, borderColor: c.border,
+      paddingVertical: 14,
+    },
+    finishedText: { color: c.textMuted, fontSize: 14, fontWeight: '600' },
+    joinErrorBox: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      marginHorizontal: 20, marginTop: 6,
+      backgroundColor: c.accent + '15', borderRadius: 8,
+      paddingHorizontal: 10, paddingVertical: 7,
+      borderWidth: 1, borderColor: c.accent + '40',
+    },
+    joinErrorText: { color: c.accent, fontSize: 12, flex: 1 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+    offscreenCapture: {
+      position: 'absolute',
+      transform: [{ translateX: -2000 }],
+      top: 100,
+    },
+    scorecardCaptureWrapper: {
+      backgroundColor: 'transparent',
+      padding: 16,
+    },
+    scorecardPreview: {
+      backgroundColor: '#111318',
+      borderRadius: 20,
+      padding: 20,
+      width: 312,
+      alignSelf: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.07)',
+    },
+    scorecardSheet: {
+      backgroundColor: c.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+      gap: 16, alignItems: 'center',
+    },
+    sheet: {
+      backgroundColor: c.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 14,
+    },
+    sheetScroll: {
+      backgroundColor: c.background,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 12,
+    },
+    handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: 4 },
+    sheetTitle: { color: c.textPrimary, fontSize: 18, fontWeight: '800' },
+    sheetSub: { color: c.textMuted, fontSize: 14, marginTop: -6 },
+    sheetActions: { flexDirection: 'row', gap: 10 },
+    teamBtns: { flexDirection: 'row', gap: 10 },
+    teamBtn: {
+      flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: c.border,
+      padding: 14, alignItems: 'center', gap: 4,
+    },
+    teamBtnLabel: { fontSize: 15, fontWeight: '800' },
+    teamBtnCount: { color: c.textMuted, fontSize: 12 },
+    teamBtnNames: { color: c.textMuted, fontSize: 11, textAlign: 'center' },
+    guestSection: { gap: 8 },
+    guestLabel: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    guestInput: {
+      backgroundColor: c.cardBg, borderRadius: 10,
+      borderWidth: 1, borderColor: c.border,
+      color: c.textPrimary, fontSize: 14,
+      paddingHorizontal: 14, paddingVertical: 11,
+    },
+    subSection: { color: c.textPrimary, fontSize: 14, fontWeight: '700', marginTop: 4 },
+    setsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, marginBottom: 4 },
+    setsTeamHdr: { fontSize: 12, fontWeight: '700', width: 90, textAlign: 'center' },
+    addSetBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+    addSetText: { color: c.primary, fontSize: 14, fontWeight: '600' },
+  });
+}
+
 export default function MatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user: me } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,21 +288,17 @@ export default function MatchDetailScreen() {
   const [leaving, setLeaving] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  // Join team modal
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinTeam, setJoinTeam] = useState<'A' | 'B' | null>(null);
   const [guestName, setGuestName] = useState('');
 
-  // My team picker (organizer or participant without team)
   const [showMyTeam, setShowMyTeam] = useState(false);
 
-  // Finalize modal
   const [showFinalize, setShowFinalize] = useState(false);
   const [winningTeam, setWinningTeam] = useState<'A' | 'B' | null>(null);
   const [sets, setSets] = useState<MatchSet[]>([{ a: 0, b: 0 }]);
   const [recording, setRecording] = useState(false);
 
-  // Scorecard
   const [showScorecard, setShowScorecard] = useState(false);
   const [lastSets, setLastSets] = useState<MatchSet[]>([]);
   const [lastWinner, setLastWinner] = useState<'A' | 'B' | null>(null);
@@ -237,13 +415,8 @@ export default function MatchDetailScreen() {
     if (!scorecardRef.current) return;
     setSharing(true);
     try {
-      // Small delay so the offscreen view fully lays out before capture
       await new Promise(r => setTimeout(r, 150));
-      const uri = await captureRef(scorecardRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
+      const uri = await captureRef(scorecardRef, { format: 'png', quality: 1, result: 'tmpfile' });
       await Sharing.shareAsync(uri, { mimeType: 'image/png' });
     } catch {
       Alert.alert('Error', 'No se pudo compartir el resultado.');
@@ -264,15 +437,15 @@ export default function MatchDetailScreen() {
     : null;
 
   return (
-    <SafeAreaView style={st.root} edges={['top']}>
-      <View style={st.header}>
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn}>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={st.headerTitle}>Partido</Text>
+        <Text style={styles.headerTitle}>Partido</Text>
         {isOrganizer && !match?.resultRecorded ? (
-          <TouchableOpacity onPress={handleDelete} style={st.deleteBtn}>
-            <Ionicons name="trash-outline" size={20} color={colors.ctaHighlight} />
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
+            <Ionicons name="trash-outline" size={20} color={colors.accent} />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -280,97 +453,93 @@ export default function MatchDetailScreen() {
       </View>
 
       {loading ? (
-        <View style={st.loader}><ActivityIndicator color={colors.primary} size="large" /></View>
+        <View style={styles.loader}><ActivityIndicator color={colors.primary} size="large" /></View>
       ) : match ? (
-        <ScrollView contentContainerStyle={st.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-          {/* Organizador */}
-          <View style={st.organizerRow}>
-            <TouchableOpacity onPress={() => router.push(`/profile/${match.organizer.id}`)} style={st.organizerInfo}>
+          <View style={styles.organizerRow}>
+            <TouchableOpacity onPress={() => router.push(`/profile/${match.organizer.id}`)} style={styles.organizerInfo}>
               <Avatar name={match.organizer.name} size={46} available={match.organizer.available} />
               <View>
-                <Text style={st.organizerLabel}>Organizado por</Text>
-                <Text style={st.organizerName}>{match.organizer.name}</Text>
+                <Text style={styles.organizerLabel}>Organizado por</Text>
+                <Text style={styles.organizerName}>{match.organizer.name}</Text>
               </View>
             </TouchableOpacity>
             <Tag label={levelDisplay[match.level] ?? match.level} variant="level" level={match.level} />
           </View>
 
-          {/* Info principal */}
-          <View style={st.infoCard}>
-            <View style={st.infoRow}>
-              <View style={st.infoIcon}><Ionicons name="calendar-outline" size={18} color={colors.primary} /></View>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}><Ionicons name="calendar-outline" size={18} color={colors.primary} /></View>
               <View>
-                <Text style={st.infoLabel}>Fecha</Text>
-                <Text style={st.infoValue}>{match.date}</Text>
+                <Text style={styles.infoLabel}>Fecha</Text>
+                <Text style={styles.infoValue}>{match.date}</Text>
               </View>
             </View>
-            <View style={st.infoDivider} />
-            <View style={st.infoRow}>
-              <View style={st.infoIcon}><Ionicons name="time-outline" size={18} color={colors.primary} /></View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}><Ionicons name="time-outline" size={18} color={colors.primary} /></View>
               <View>
-                <Text style={st.infoLabel}>Hora</Text>
-                <Text style={st.infoValue}>{match.time}</Text>
+                <Text style={styles.infoLabel}>Hora</Text>
+                <Text style={styles.infoValue}>{match.time}</Text>
               </View>
             </View>
-            <View style={st.infoDivider} />
-            <View style={st.infoRow}>
-              <View style={st.infoIcon}><Ionicons name="location-outline" size={18} color={colors.primary} /></View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}><Ionicons name="location-outline" size={18} color={colors.primary} /></View>
               <View style={{ flex: 1 }}>
-                <Text style={st.infoLabel}>Lugar</Text>
-                <Text style={st.infoValue} numberOfLines={2}>
+                <Text style={styles.infoLabel}>Lugar</Text>
+                <Text style={styles.infoValue} numberOfLines={2}>
                   {match.court?.name ?? match.customLocation ?? '—'}
                 </Text>
-                {match.court?.address ? <Text style={st.infoSub}>{match.court.address}</Text> : null}
+                {match.court?.address ? <Text style={styles.infoSub}>{match.court.address}</Text> : null}
               </View>
             </View>
           </View>
 
           {match.description ? (
-            <View style={st.descCard}>
-              <Text style={st.sectionTitle}>Descripción</Text>
-              <Text style={st.descText}>{match.description}</Text>
+            <View style={styles.descCard}>
+              <Text style={styles.sectionTitle}>Descripción</Text>
+              <Text style={styles.descText}>{match.description}</Text>
             </View>
           ) : null}
 
-          {/* Result card */}
           {match.resultRecorded && (
-            <View style={st.resultCard}>
-              <View style={st.resultHeader}>
+            <View style={styles.resultCard}>
+              <View style={styles.resultHeader}>
                 <Ionicons name="trophy" size={16} color="#FFB800" />
-                <Text style={st.resultTitle}>Resultado final</Text>
+                <Text style={styles.resultTitle}>Resultado final</Text>
               </View>
               {scoreLabel ? (
-                <Text style={st.resultScore}>{scoreLabel}</Text>
+                <Text style={styles.resultScore}>{scoreLabel}</Text>
               ) : null}
-              <View style={st.winnersRow}>
+              <View style={styles.winnersRow}>
                 {(match.winners ?? []).map(w => (
-                  <View key={w.id} style={st.winnerChip}>
+                  <View key={w.id} style={styles.winnerChip}>
                     <Ionicons name="trophy-outline" size={12} color="#FFB800" />
-                    <Text style={st.winnerChipName}>{w.name.split(' ')[0]}</Text>
+                    <Text style={styles.winnerChipName}>{w.name.split(' ')[0]}</Text>
                   </View>
                 ))}
               </View>
             </View>
           )}
 
-          {/* Jugadores — teams or plain list */}
-          <View style={st.spotsCard}>
-            <View style={st.spotsHeader}>
-              <Text style={st.sectionTitle}>Jugadores</Text>
-              <Text style={[st.spotsCount, isFull && { color: colors.ctaHighlight }]}>
+          <View style={styles.spotsCard}>
+            <View style={styles.spotsHeader}>
+              <Text style={styles.sectionTitle}>Jugadores</Text>
+              <Text style={[styles.spotsCount, isFull && styles.spotsCountFull]}>
                 {(match.totalSpots ?? 0) - spotsLeft}/{match.totalSpots ?? 0}
               </Text>
             </View>
 
-            <View style={st.spotsBar}>
+            <View style={styles.spotsBar}>
               {Array.from({ length: match.totalSpots ?? 0 }).map((_, i) => (
-                <View key={i} style={[st.spotDot, i < (match.totalSpots ?? 0) - spotsLeft && st.spotFilled]} />
+                <View key={i} style={[styles.spotDot, i < (match.totalSpots ?? 0) - spotsLeft && styles.spotFilled]} />
               ))}
             </View>
 
             {doubles && ((match.teamA?.length ?? 0) > 0 || (match.teamB?.length ?? 0) > 0) ? (
-              <View style={st.teamsRow}>
+              <View style={styles.teamsRow}>
                 <TeamColumn
                   label="Equipo A"
                   players={match.teamA ?? []}
@@ -379,29 +548,29 @@ export default function MatchDetailScreen() {
                   accent={colors.primary}
                   onPress={u => router.push(`/profile/${u.id}`)}
                 />
-                <View style={st.teamVsSep}>
-                  <Text style={st.teamVsText}>VS</Text>
+                <View style={styles.teamVsSep}>
+                  <Text style={styles.teamVsText}>VS</Text>
                 </View>
                 <TeamColumn
                   label="Equipo B"
                   players={match.teamB ?? []}
                   guests={match.teamBGuests ?? []}
                   winners={match.winners ?? []}
-                  accent={colors.ctaHighlight}
+                  accent={colors.accent}
                   onPress={u => router.push(`/profile/${u.id}`)}
                 />
               </View>
             ) : (
-              <View style={st.participantsList}>
+              <View style={styles.participantsList}>
                 {match.participants?.map(p => (
-                  <TouchableOpacity key={p.id} style={st.participantRow} onPress={() => router.push(`/profile/${p.id}`)} activeOpacity={0.7}>
+                  <TouchableOpacity key={p.id} style={styles.participantRow} onPress={() => router.push(`/profile/${p.id}`)} activeOpacity={0.7}>
                     <Avatar name={p.name} size={36} available={p.available} />
                     <View style={{ flex: 1 }}>
-                      <Text style={st.participantName}>{p.name}</Text>
-                      <Text style={st.participantLevel}>{levelDisplay[p.level] ?? p.level}</Text>
+                      <Text style={styles.participantName}>{p.name}</Text>
+                      <Text style={styles.participantLevel}>{levelDisplay[p.level] ?? p.level}</Text>
                     </View>
                     {p.id === match.organizer.id && (
-                      <View style={st.organizerBadge}><Text style={st.organizerBadgeText}>Org.</Text></View>
+                      <View style={styles.organizerBadge}><Text style={styles.organizerBadgeText}>Org.</Text></View>
                     )}
                     {match.resultRecorded && (match.winners ?? []).some(w => w.id === p.id) && (
                       <Ionicons name="trophy" size={16} color="#FFB800" />
@@ -410,55 +579,52 @@ export default function MatchDetailScreen() {
                   </TouchableOpacity>
                 ))}
                 {Array.from({ length: spotsLeft }).map((_, i) => (
-                  <View key={`e${i}`} style={[st.participantRow, st.emptySlot]}>
-                    <View style={st.emptyAvatar}><Ionicons name="person-add-outline" size={18} color={colors.textMuted} /></View>
-                    <Text style={st.emptySlotText}>Lugar disponible</Text>
+                  <View key={`e${i}`} style={[styles.participantRow, styles.emptySlot]}>
+                    <View style={styles.emptyAvatar}><Ionicons name="person-add-outline" size={18} color={colors.textMuted} /></View>
+                    <Text style={styles.emptySlotText}>Lugar disponible</Text>
                   </View>
                 ))}
               </View>
             )}
           </View>
 
-          {/* Pick my team (participant without a team in doubles) */}
           {doubles && isParticipant && !myTeam && !match.resultRecorded && (
-            <TouchableOpacity style={st.pickTeamBtn} onPress={() => setShowMyTeam(true)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.pickTeamBtn} onPress={() => setShowMyTeam(true)} activeOpacity={0.8}>
               <Ionicons name="people-outline" size={16} color={colors.primary} />
-              <Text style={st.pickTeamText}>Elegir mi equipo</Text>
+              <Text style={styles.pickTeamText}>Elegir mi equipo</Text>
             </TouchableOpacity>
           )}
 
-          {/* Finalizar partido */}
           {isOrganizer && !match.resultRecorded && (
             <Button
               label="Finalizar partido"
               variant="primary"
               fullWidth size="lg"
               onPress={() => { setSets([{ a: 0, b: 0 }]); setWinningTeam(null); setShowFinalize(true); }}
-              style={st.actionBtn}
+              style={styles.actionBtn}
             />
           )}
 
-          {/* Join / Leave (non-organizer) */}
           {!isOrganizer && (
             match.resultRecorded ? (
-              <View style={st.finishedBanner}>
+              <View style={styles.finishedBanner}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.textMuted} />
-                <Text style={st.finishedText}>Partido terminado</Text>
+                <Text style={styles.finishedText}>Partido terminado</Text>
               </View>
             ) : isParticipant ? (
-              <Button label="Salir del partido" variant="outline" fullWidth size="lg" loading={leaving} onPress={handleLeave} style={st.actionBtn} />
+              <Button label="Salir del partido" variant="outline" fullWidth size="lg" loading={leaving} onPress={handleLeave} style={styles.actionBtn} />
             ) : (
               <>
                 <Button
                   label={isFull ? 'Partido completo' : 'Unirme al partido'}
                   variant={isFull ? 'secondary' : 'primary'}
                   fullWidth size="lg" disabled={isFull} loading={joining}
-                  onPress={handleJoin} style={st.actionBtn}
+                  onPress={handleJoin} style={styles.actionBtn}
                 />
                 {!!joinError && (
-                  <View style={st.joinErrorBox}>
-                    <Ionicons name="alert-circle-outline" size={15} color={colors.ctaHighlight} />
-                    <Text style={st.joinErrorText}>{joinError}</Text>
+                  <View style={styles.joinErrorBox}>
+                    <Ionicons name="alert-circle-outline" size={15} color={colors.accent} />
+                    <Text style={styles.joinErrorText}>{joinError}</Text>
                   </View>
                 )}
               </>
@@ -467,39 +633,39 @@ export default function MatchDetailScreen() {
 
         </ScrollView>
       ) : (
-        <View style={st.loader}><Text style={{ color: colors.textMuted }}>No se encontró el partido.</Text></View>
+        <View style={styles.loader}><Text style={{ color: colors.textMuted }}>No se encontró el partido.</Text></View>
       )}
 
       {/* ── Join team modal ── */}
       <Modal visible={showJoinModal} transparent animationType="slide" onRequestClose={() => setShowJoinModal(false)}>
-        <View style={st.overlay}>
-          <View style={st.sheet}>
-            <View style={st.handle} />
-            <Text style={st.sheetTitle}>Elegir equipo</Text>
-            <Text style={st.sheetSub}>Selecciona en qué equipo juegas</Text>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Elegir equipo</Text>
+            <Text style={styles.sheetSub}>Selecciona en qué equipo juegas</Text>
 
-            <View style={st.teamBtns}>
+            <View style={styles.teamBtns}>
               <TouchableOpacity
-                style={[st.teamBtn, joinTeam === 'A' && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
+                style={[styles.teamBtn, joinTeam === 'A' && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
                 onPress={() => setJoinTeam('A')} activeOpacity={0.8}
               >
-                <Text style={[st.teamBtnLabel, { color: colors.primary }]}>Equipo A</Text>
-                <Text style={st.teamBtnCount}>{teamACount} jugadores</Text>
+                <Text style={[styles.teamBtnLabel, { color: colors.primary }]}>Equipo A</Text>
+                <Text style={styles.teamBtnCount}>{teamACount} jugadores</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[st.teamBtn, joinTeam === 'B' && { borderColor: colors.ctaHighlight, backgroundColor: colors.ctaHighlight + '18' }]}
+                style={[styles.teamBtn, joinTeam === 'B' && { borderColor: colors.accent, backgroundColor: colors.accent + '18' }]}
                 onPress={() => setJoinTeam('B')} activeOpacity={0.8}
               >
-                <Text style={[st.teamBtnLabel, { color: colors.ctaHighlight }]}>Equipo B</Text>
-                <Text style={st.teamBtnCount}>{teamBCount} jugadores</Text>
+                <Text style={[styles.teamBtnLabel, { color: colors.accent }]}>Equipo B</Text>
+                <Text style={styles.teamBtnCount}>{teamBCount} jugadores</Text>
               </TouchableOpacity>
             </View>
 
             {spotsLeft > 1 && (
-              <View style={st.guestSection}>
-                <Text style={st.guestLabel}>¿Traes un acompañante sin cuenta?</Text>
+              <View style={styles.guestSection}>
+                <Text style={styles.guestLabel}>¿Traes un acompañante sin cuenta?</Text>
                 <TextInput
-                  style={st.guestInput}
+                  style={styles.guestInput}
                   placeholder="Nombre del jugador invitado (opcional)"
                   placeholderTextColor={colors.textMuted}
                   value={guestName}
@@ -508,7 +674,7 @@ export default function MatchDetailScreen() {
               </View>
             )}
 
-            <View style={st.sheetActions}>
+            <View style={styles.sheetActions}>
               <Button label="Cancelar" variant="outline" size="md" onPress={() => setShowJoinModal(false)} style={{ flex: 1 }} />
               <Button label="Unirme" variant="primary" size="md" loading={joining} onPress={confirmJoin} style={{ flex: 1 }} />
             </View>
@@ -518,16 +684,16 @@ export default function MatchDetailScreen() {
 
       {/* ── My team picker ── */}
       <Modal visible={showMyTeam} transparent animationType="slide" onRequestClose={() => setShowMyTeam(false)}>
-        <View style={st.overlay}>
-          <View style={st.sheet}>
-            <View style={st.handle} />
-            <Text style={st.sheetTitle}>¿En qué equipo juegas?</Text>
-            <View style={st.teamBtns}>
-              <TouchableOpacity style={[st.teamBtn, { borderColor: colors.primary + '60' }]} onPress={() => handleSetMyTeam('A')} activeOpacity={0.8}>
-                <Text style={[st.teamBtnLabel, { color: colors.primary }]}>Equipo A</Text>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>¿En qué equipo juegas?</Text>
+            <View style={styles.teamBtns}>
+              <TouchableOpacity style={[styles.teamBtn, { borderColor: colors.primary + '60' }]} onPress={() => handleSetMyTeam('A')} activeOpacity={0.8}>
+                <Text style={[styles.teamBtnLabel, { color: colors.primary }]}>Equipo A</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[st.teamBtn, { borderColor: colors.ctaHighlight + '60' }]} onPress={() => handleSetMyTeam('B')} activeOpacity={0.8}>
-                <Text style={[st.teamBtnLabel, { color: colors.ctaHighlight }]}>Equipo B</Text>
+              <TouchableOpacity style={[styles.teamBtn, { borderColor: colors.accent + '60' }]} onPress={() => handleSetMyTeam('B')} activeOpacity={0.8}>
+                <Text style={[styles.teamBtnLabel, { color: colors.accent }]}>Equipo B</Text>
               </TouchableOpacity>
             </View>
             <Button label="Cancelar" variant="outline" size="md" onPress={() => setShowMyTeam(false)} />
@@ -535,10 +701,10 @@ export default function MatchDetailScreen() {
         </View>
       </Modal>
 
-      {/* ── Offscreen scorecard for capture (outside Modal — iOS captureRef requires this) ── */}
+      {/* ── Offscreen scorecard for capture ── */}
       {showScorecard && (
-        <View style={st.offscreenCapture} pointerEvents="none">
-          <View ref={scorecardRef} style={st.scorecardCaptureWrapper} collapsable={false}>
+        <View style={styles.offscreenCapture} pointerEvents="none">
+          <View ref={scorecardRef} style={styles.scorecardCaptureWrapper} collapsable={false}>
             <ScorecardCard
               date={match?.date ?? ''}
               location={match?.court?.name ?? match?.customLocation ?? ''}
@@ -559,14 +725,14 @@ export default function MatchDetailScreen() {
         </View>
       )}
 
-      {/* ── Scorecard modal (visual only, no ref) ── */}
+      {/* ── Scorecard modal ── */}
       <Modal visible={showScorecard} transparent animationType="fade" onRequestClose={() => setShowScorecard(false)}>
-        <View style={st.overlay}>
-          <View style={st.scorecardSheet}>
-            <View style={st.handle} />
-            <Text style={st.sheetTitle}>Resultado registrado</Text>
-            <Text style={st.sheetSub}>Comparte el scorecard con los jugadores</Text>
-            <View style={st.scorecardPreview}>
+        <View style={styles.overlay}>
+          <View style={styles.scorecardSheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Resultado registrado</Text>
+            <Text style={styles.sheetSub}>Comparte el scorecard con los jugadores</Text>
+            <View style={styles.scorecardPreview}>
               <ScorecardCard
                 date={match?.date ?? ''}
                 location={match?.court?.name ?? match?.customLocation ?? ''}
@@ -584,7 +750,7 @@ export default function MatchDetailScreen() {
                 winnerTeam={lastWinner}
               />
             </View>
-            <View style={st.sheetActions}>
+            <View style={styles.sheetActions}>
               <Button label="Cerrar" variant="outline" size="md" onPress={() => setShowScorecard(false)} style={{ flex: 1 }} />
               <Button label={sharing ? 'Compartiendo...' : 'Compartir'} variant="primary" size="md" loading={sharing} onPress={handleShareScorecard} style={{ flex: 1 }} />
             </View>
@@ -594,33 +760,32 @@ export default function MatchDetailScreen() {
 
       {/* ── Finalize modal ── */}
       <Modal visible={showFinalize} transparent animationType="slide" onRequestClose={() => setShowFinalize(false)}>
-        <View style={st.overlay}>
-          <ScrollView contentContainerStyle={st.sheetScroll} showsVerticalScrollIndicator={false}>
-            <View style={st.handle} />
-            <Text style={st.sheetTitle}>Finalizar partido</Text>
+        <View style={styles.overlay}>
+          <ScrollView contentContainerStyle={styles.sheetScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Finalizar partido</Text>
 
-            {/* Team winner */}
             {doubles ? (
               <View>
-                <Text style={st.subSection}>¿Qué equipo ganó?</Text>
-                <View style={st.teamBtns}>
+                <Text style={styles.subSection}>¿Qué equipo ganó?</Text>
+                <View style={styles.teamBtns}>
                   <TouchableOpacity
-                    style={[st.teamBtn, winningTeam === 'A' && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
+                    style={[styles.teamBtn, winningTeam === 'A' && { borderColor: colors.primary, backgroundColor: colors.primary + '18' }]}
                     onPress={() => setWinningTeam('A')} activeOpacity={0.8}
                   >
                     <Ionicons name="trophy-outline" size={18} color={colors.primary} />
-                    <Text style={[st.teamBtnLabel, { color: colors.primary }]}>Equipo A ganó</Text>
-                    <Text style={st.teamBtnNames} numberOfLines={2}>
+                    <Text style={[styles.teamBtnLabel, { color: colors.primary }]}>Equipo A ganó</Text>
+                    <Text style={styles.teamBtnNames} numberOfLines={2}>
                       {[...(match?.teamA ?? []).map(u => u.name.split(' ')[0]), ...(match?.teamAGuests ?? [])].join(', ') || '—'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[st.teamBtn, winningTeam === 'B' && { borderColor: colors.ctaHighlight, backgroundColor: colors.ctaHighlight + '18' }]}
+                    style={[styles.teamBtn, winningTeam === 'B' && { borderColor: colors.accent, backgroundColor: colors.accent + '18' }]}
                     onPress={() => setWinningTeam('B')} activeOpacity={0.8}
                   >
-                    <Ionicons name="trophy-outline" size={18} color={colors.ctaHighlight} />
-                    <Text style={[st.teamBtnLabel, { color: colors.ctaHighlight }]}>Equipo B ganó</Text>
-                    <Text style={st.teamBtnNames} numberOfLines={2}>
+                    <Ionicons name="trophy-outline" size={18} color={colors.accent} />
+                    <Text style={[styles.teamBtnLabel, { color: colors.accent }]}>Equipo B ganó</Text>
+                    <Text style={styles.teamBtnNames} numberOfLines={2}>
                       {[...(match?.teamB ?? []).map(u => u.name.split(' ')[0]), ...(match?.teamBGuests ?? [])].join(', ') || '—'}
                     </Text>
                   </TouchableOpacity>
@@ -628,14 +793,13 @@ export default function MatchDetailScreen() {
               </View>
             ) : null}
 
-            {/* Sets */}
-            <Text style={st.subSection}>Resultado por set</Text>
-            <View style={st.setsHeader}>
-              <Text style={[st.setsTeamHdr, { color: colors.primary }]}>
+            <Text style={styles.subSection}>Resultado por set</Text>
+            <View style={styles.setsHeader}>
+              <Text style={[styles.setsTeamHdr, { color: colors.primary }]}>
                 {doubles ? 'Equipo A' : 'Jugador A'}
               </Text>
               <View style={{ flex: 1 }} />
-              <Text style={[st.setsTeamHdr, { color: colors.ctaHighlight }]}>
+              <Text style={[styles.setsTeamHdr, { color: colors.accent }]}>
                 {doubles ? 'Equipo B' : 'Jugador B'}
               </Text>
             </View>
@@ -646,12 +810,12 @@ export default function MatchDetailScreen() {
                 onRemove={() => removeSet(i)}
               />
             ))}
-            <TouchableOpacity style={st.addSetBtn} onPress={addSet} activeOpacity={0.75}>
+            <TouchableOpacity style={styles.addSetBtn} onPress={addSet} activeOpacity={0.75}>
               <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-              <Text style={st.addSetText}>Agregar set</Text>
+              <Text style={styles.addSetText}>Agregar set</Text>
             </TouchableOpacity>
 
-            <View style={[st.sheetActions, { marginTop: 8 }]}>
+            <View style={[styles.sheetActions, { marginTop: 8 }]}>
               <Button label="Cancelar" variant="outline" size="md" onPress={() => setShowFinalize(false)} style={{ flex: 1 }} />
               <Button label="Confirmar" variant="primary" size="md" loading={recording} onPress={handleRecordResult} style={{ flex: 1 }} />
             </View>
@@ -661,220 +825,3 @@ export default function MatchDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  backBtn: { padding: 4, width: 40 },
-  headerTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-  deleteBtn: { padding: 4, width: 40, alignItems: 'flex-end' },
-  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { paddingBottom: 60 },
-
-  organizerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 20,
-  },
-  organizerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  organizerLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '500' },
-  organizerName: { color: colors.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 2 },
-
-  infoCard: {
-    marginHorizontal: 20, backgroundColor: colors.cardBg,
-    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    padding: 16, marginBottom: 14,
-  },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  infoIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: colors.primary + '18',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  infoLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '500' },
-  infoValue: { color: colors.textPrimary, fontSize: 15, fontWeight: '600', marginTop: 2 },
-  infoSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  infoDivider: { height: 1, backgroundColor: colors.border, marginVertical: 14 },
-
-  descCard: {
-    marginHorizontal: 20, backgroundColor: colors.cardBg,
-    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    padding: 16, marginBottom: 14,
-  },
-  descText: { color: colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 8 },
-  sectionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-
-  resultCard: {
-    marginHorizontal: 20, backgroundColor: '#FFB80010',
-    borderRadius: 14, borderWidth: 1, borderColor: '#FFB80040',
-    padding: 16, marginBottom: 14, gap: 8,
-  },
-  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  resultTitle: { color: '#FFB800', fontSize: 14, fontWeight: '700' },
-  resultScore: { color: colors.textPrimary, fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
-  winnersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  winnerChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#FFB80018', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#FFB80040',
-  },
-  winnerChipName: { color: '#FFB800', fontSize: 13, fontWeight: '700' },
-
-  spotsCard: {
-    marginHorizontal: 20, backgroundColor: colors.cardBg,
-    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    padding: 16, marginBottom: 14,
-  },
-  spotsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  spotsCount: { color: colors.textSecondary, fontSize: 14, fontWeight: '700' },
-  spotsBar: { flexDirection: 'row', gap: 6, marginBottom: 16 },
-  spotDot: { height: 6, flex: 1, borderRadius: 3, backgroundColor: colors.border },
-  spotFilled: { backgroundColor: colors.primary },
-
-  // Teams layout
-  teamsRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  teamVsSep: { alignItems: 'center', paddingTop: 28 },
-  teamVsText: { color: colors.textMuted, fontSize: 12, fontWeight: '800' },
-  teamCol: {
-    flex: 1, borderRadius: 12, borderWidth: 1,
-    padding: 10, gap: 8,
-  },
-  teamLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
-  teamPlayer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  teamPlayerName: { flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
-  guestAvatar: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: colors.secondary, borderWidth: 1,
-    borderColor: colors.border, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Plain list
-  participantsList: { gap: 2 },
-  participantRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderRadius: 10 },
-  participantName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  participantLevel: { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
-  organizerBadge: {
-    backgroundColor: colors.primary + '22', borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 3,
-  },
-  organizerBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
-  emptySlot: { opacity: 0.5 },
-  emptyAvatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: colors.secondary, borderWidth: 1,
-    borderColor: colors.border, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  emptySlotText: { color: colors.textMuted, fontSize: 14 },
-
-  pickTeamBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 20, marginBottom: 10,
-    backgroundColor: colors.primary + '12', borderRadius: 10,
-    borderWidth: 1, borderColor: colors.primary + '40',
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  pickTeamText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-
-  actionBtn: { marginHorizontal: 20, marginTop: 6, marginBottom: 10 },
-  finishedBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginHorizontal: 20, marginTop: 6, marginBottom: 10,
-    backgroundColor: colors.cardBg, borderRadius: 12,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 14,
-  },
-  finishedText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
-  joinErrorBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginHorizontal: 20, marginTop: 6,
-    backgroundColor: colors.ctaHighlight + '15', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 7,
-    borderWidth: 1, borderColor: colors.ctaHighlight + '40',
-  },
-  joinErrorText: { color: colors.ctaHighlight, fontSize: 12, flex: 1 },
-
-  // Modals
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  offscreenCapture: {
-    position: 'absolute',
-    transform: [{ translateX: -2000 }],
-    top: 100,
-  },
-  scorecardCaptureWrapper: {
-    backgroundColor: 'transparent',
-    padding: 16,
-  },
-  scorecardPreview: {
-    backgroundColor: '#111318',
-    borderRadius: 20,
-    padding: 20,
-    width: 312,
-    alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  scorecardSheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    gap: 16, alignItems: 'center',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 14,
-  },
-  sheetScroll: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, gap: 12,
-  },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 4 },
-  sheetTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
-  sheetSub: { color: colors.textMuted, fontSize: 14, marginTop: -6 },
-  sheetActions: { flexDirection: 'row', gap: 10 },
-
-  teamBtns: { flexDirection: 'row', gap: 10 },
-  teamBtn: {
-    flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border,
-    padding: 14, alignItems: 'center', gap: 4,
-  },
-  teamBtnLabel: { fontSize: 15, fontWeight: '800' },
-  teamBtnCount: { color: colors.textMuted, fontSize: 12 },
-  teamBtnNames: { color: colors.textMuted, fontSize: 11, textAlign: 'center' },
-
-  guestSection: { gap: 8 },
-  guestLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  guestInput: {
-    backgroundColor: colors.cardBg, borderRadius: 10,
-    borderWidth: 1, borderColor: colors.border,
-    color: colors.textPrimary, fontSize: 14,
-    paddingHorizontal: 14, paddingVertical: 11,
-  },
-
-  subSection: { color: colors.textPrimary, fontSize: 14, fontWeight: '700', marginTop: 4 },
-  setsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, marginBottom: 4 },
-  setsTeamHdr: { fontSize: 12, fontWeight: '700', width: 90, textAlign: 'center' },
-
-  // Set row
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  setLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '600', width: 38 },
-  setScore: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  adj: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  setNum: { color: colors.textPrimary, fontSize: 20, fontWeight: '800', minWidth: 26, textAlign: 'center' },
-  setVs: { color: colors.textMuted, fontSize: 16, marginHorizontal: 2 },
-  removeSet: { padding: 4 },
-
-  addSetBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  addSetText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-});
