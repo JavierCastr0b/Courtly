@@ -196,6 +196,18 @@ function makeStyles(c: Colors) {
     },
     pickTeamText: { color: c.primary, fontSize: 14, fontWeight: '600' },
     actionBtn: { marginHorizontal: 20, marginTop: 6, marginBottom: 10 },
+    chatCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      marginHorizontal: 20, marginBottom: 10,
+      backgroundColor: c.cardBg, borderRadius: 14,
+      borderWidth: 1, borderColor: c.border, padding: 14,
+    },
+    chatCardIcon: {
+      width: 40, height: 40, borderRadius: 11,
+      backgroundColor: c.primary + '18', alignItems: 'center', justifyContent: 'center',
+    },
+    chatCardTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+    chatCardSub: { color: c.textSecondary, fontSize: 12, marginTop: 1 },
     finishedBanner: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       marginHorizontal: 20, marginTop: 6, marginBottom: 10,
@@ -587,6 +599,23 @@ export default function MatchDetailScreen() {
               </View>
             )}
           </View>
+
+          <TouchableOpacity
+            style={styles.chatCard}
+            onPress={() => router.push(`/match/chat/${match.id}`)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.chatCardIcon}>
+              <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.chatCardTitle}>Chat del partido</Text>
+              <Text style={styles.chatCardSub}>
+                {match.participants.length} jugador{match.participants.length !== 1 ? 'es' : ''} · Coordinación rápida
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
 
           {doubles && isParticipant && !myTeam && !match.resultRecorded && (
             <TouchableOpacity style={styles.pickTeamBtn} onPress={() => setShowMyTeam(true)} activeOpacity={0.8}>

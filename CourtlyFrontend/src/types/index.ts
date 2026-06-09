@@ -104,3 +104,19 @@ export interface AuthResponse {
   token: string;
   userId: string;
 }
+
+export type AttendanceStatus = 'CONFIRMED' | 'PENDING' | 'CANT_ATTEND';
+
+export interface ChatMessage {
+  id: string;
+  matchId: string;
+  user: User | null;
+  content: string;
+  type: 'TEXT' | 'SYSTEM' | 'QUICK_ACTION';
+  createdAt: string;
+}
+
+export interface MatchAttendance {
+  userId: string;
+  status: AttendanceStatus;
+}
