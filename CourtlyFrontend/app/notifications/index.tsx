@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,115 @@ import { invitationsApi } from '@/src/api/invitations';
 import { notificationsApi, AppNotification } from '@/src/api/notifications';
 import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
+
+// ─── Mock party invitations ───────────────────────────────────────────────────
+
+type PartyInviteResponse = 'pending' | 'accepted' | 'rejected';
+
+interface MockPartyInvite {
+  id: string;
+  fromName: string;
+  fromId: string;
+  matchLocation: string;
+  matchDate: string;
+  matchTime: string;
+  matchLevel: string;
+  timeAgo: string;
+}
+
+const MOCK_PARTY_INVITES: MockPartyInvite[] = [
+  { id: 'pi1', fromName: 'Javier Castro', fromId: 'u1', matchLocation: 'Golf Los Incas',  matchDate: 'Hoy',    matchTime: '8:00 PM',  matchLevel: '4ta categoría', timeAgo: 'Hace 5 min' },
+  { id: 'pi2', fromName: 'Carlos Ramos',  fromId: 'u6', matchLocation: 'Padel Indoor Lima', matchDate: 'Mañana', matchTime: '10:00 AM', matchLevel: '3ra categoría', timeAgo: 'Hace 2 h' },
+];
+
+function PartyInviteCard({ invite, response, onAccept, onReject }: {
+  invite: MockPartyInvite;
+  response: PartyInviteResponse;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const { colors } = useTheme();
+  const scaleA = useRef(new Animated.Value(1)).current;
+  const scaleR = useRef(new Animated.Value(1)).current;
+
+  const press = (scale: Animated.Value, cb: () => void) => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.93, duration: 70, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 110, useNativeDriver: true }),
+    ]).start(cb);
+  };
+
+  return (
+    <View style={{ backgroundColor: colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '35', padding: 14, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <View style={{ position: 'relative' }}>
+          <Avatar name={invite.fromName} size={40} />
+          <View style={{ position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.cardBg, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="tennisball" size={7} color="#fff" />
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{invite.fromName} </Text>
+            te invitó a un partido
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>{invite.timeAgo}</Text>
+        </View>
+      </View>
+      {/* Match detail */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.secondary, borderRadius: 10, padding: 10, marginBottom: 12 }}>
+        <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="tennisball-outline" size={16} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{invite.matchLocation}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{invite.matchDate} · {invite.matchTime}</Text>
+          <View style={{ alignSelf: 'flex-start', backgroundColor: colors.primary + '18', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3 }}>
+            <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '700' }}>{invite.matchLevel}</Text>
+          </View>
+        </View>
+      </View>
+      {/* Actions or response */}
+      {response === 'pending' ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Animated.View style={{ flex: 1, transform: [{ scale: scaleA }] }}>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.success, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}
+              activeOpacity={0.85}
+              onPress={() => press(scaleA, onAccept)}
+            >
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Aceptar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+          <Animated.View style={{ flex: 1, transform: [{ scale: scaleR }] }}>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.secondary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
+              activeOpacity={0.85}
+              onPress={() => press(scaleR, onReject)}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>Rechazar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      ) : (
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+          backgroundColor: response === 'accepted' ? colors.success + '18' : '#EF444418',
+          borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7,
+          borderWidth: 1, borderColor: response === 'accepted' ? colors.success + '40' : '#EF444440',
+        }}>
+          <Ionicons name={response === 'accepted' ? 'checkmark-circle' : 'close-circle'} size={15} color={response === 'accepted' ? colors.success : '#EF4444'} />
+          <Text style={{ color: response === 'accepted' ? colors.success : '#EF4444', fontSize: 13, fontWeight: '700' }}>
+            {response === 'accepted' ? 'Aceptaste la invitación' : 'Rechazaste la invitación'}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -74,6 +183,9 @@ export default function NotificationsScreen() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [partyResponses, setPartyResponses] = useState<Record<string, PartyInviteResponse>>(
+    Object.fromEntries(MOCK_PARTY_INVITES.map(i => [i.id, 'pending']))
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -146,6 +258,19 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Mock party invitations */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invitaciones a partidos</Text>
+            {MOCK_PARTY_INVITES.map(invite => (
+              <PartyInviteCard
+                key={invite.id}
+                invite={invite}
+                response={partyResponses[invite.id]}
+                onAccept={() => setPartyResponses(p => ({ ...p, [invite.id]: 'accepted' }))}
+                onReject={() => setPartyResponses(p => ({ ...p, [invite.id]: 'rejected' }))}
+              />
+            ))}
+          </View>
           {notifs.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Actividad</Text>

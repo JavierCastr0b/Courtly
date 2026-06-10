@@ -20,33 +20,22 @@ import { MatchCard } from '@/src/components/MatchCard';
 import { PostCard } from '@/src/components/PostCard';
 import { Button } from '@/src/components/Button';
 import { InviteModal } from '@/src/components/InviteModal';
+import { FriendActivityFeed } from '@/src/components/FriendActivityFeed';
 
-type Tab = 'recomendado' | 'siguiendo' | 'partidos';
+type Tab = 'recomendado' | 'amigos' | 'siguiendo' | 'partidos';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'recomendado', label: 'Recomendado' },
-  { key: 'siguiendo', label: 'Siguiendo' },
-  { key: 'partidos', label: 'Partidos' },
+  { key: 'amigos',      label: 'Amigos' },
+  { key: 'siguiendo',   label: 'Siguiendo' },
+  { key: 'partidos',    label: 'Partidos' },
 ];
-
-const LEVELS = ['INICIACION', 'PRINCIPIANTE', 'INTERMEDIO', 'AVANZADO', 'PROFESIONAL'];
 
 const LEVEL_NAMES: Record<string, string> = {
   INICIACION: 'Iniciación', PRINCIPIANTE: 'Principiante', INTERMEDIO: 'Intermedio',
   AVANZADO: 'Avanzado', PROFESIONAL: 'Profesional',
 };
 
-function mockCompatibility(me: User | null, other: User): number {
-  if (!me) return 72;
-  const myIdx = LEVELS.indexOf(me.level);
-  const otherIdx = LEVELS.indexOf(other.level);
-  const diff = Math.abs(myIdx - otherIdx);
-  let base = diff === 0 ? 90 : diff === 1 ? 73 : 54;
-  if (me.preferredFormat && other.preferredFormat && me.preferredFormat === other.preferredFormat) base += 4;
-  if (me.preferredStyle && other.preferredStyle && me.preferredStyle === other.preferredStyle) base += 3;
-  const extra = (me.id.charCodeAt(0) + other.id.charCodeAt(0)) % 9;
-  return Math.min(99, base + extra);
-}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -153,12 +142,9 @@ function CompatiblePlayerCard({
 }) {
   const router = useRouter();
   const { colors } = useTheme();
-  const compat = mockCompatibility(me, player);
-  const compatColor = compat >= 85 ? colors.success : compat >= 70 ? colors.primary : colors.accent;
   const levelLabel = levelDisplay[player.level] ?? player.level;
   const levelName = LEVEL_NAMES[player.level] ?? player.level;
   const sameLevel = me?.level === player.level;
-  const sameFormat = me?.preferredFormat && player.preferredFormat && me.preferredFormat === player.preferredFormat;
 
   return (
     <TouchableOpacity
@@ -166,9 +152,6 @@ function CompatiblePlayerCard({
       onPress={() => router.push(`/profile/${player.id}`)}
       activeOpacity={0.85}
     >
-      <View style={{ position: 'absolute', top: 10, right: 10, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, borderWidth: 1, backgroundColor: compatColor + '18', borderColor: compatColor + '50' }}>
-        <Text style={{ fontSize: 11, fontWeight: '800', color: compatColor }}>{compat}%</Text>
-      </View>
       <View style={{ position: 'relative', marginBottom: 8, marginTop: 4 }}>
         <Avatar name={player.name} size={52} />
         {player.available && (
@@ -176,19 +159,13 @@ function CompatiblePlayerCard({
         )}
       </View>
       <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 2 }} numberOfLines={1}>{player.name.split(' ')[0]}</Text>
-      <Text style={{ color: colors.textSecondary, fontSize: 11, marginBottom: 8, textAlign: 'center' }}>{levelLabel} · {levelName}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 11, marginBottom: sameLevel ? 5 : 10, textAlign: 'center' }}>{levelLabel} · {levelName}</Text>
       {sameLevel && (
-        <View style={{ backgroundColor: colors.success + '20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 }}>
+        <View style={{ backgroundColor: colors.success + '20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8 }}>
           <Text style={{ color: colors.success, fontSize: 10, fontWeight: '700' }}>Mismo nivel</Text>
         </View>
       )}
-      {sameFormat && (
-        <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 10, textAlign: 'center' }}>
-          {player.preferredFormat === 'SINGLES' ? 'Singles' : 'Dobles'}
-          {player.preferredStyle ? ` · ${player.preferredStyle === 'COMPETITIVO' ? 'Comp.' : 'Chill'}` : ''}
-        </Text>
-      )}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', marginTop: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%' }}>
         <Button label={followed ? 'Siguiendo' : 'Seguir'} variant={followed ? 'secondary' : 'outline'} size="sm" onPress={onFollow} style={{ flex: 1 }} />
         <TouchableOpacity style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: colors.accent + '18', borderWidth: 1, borderColor: colors.accent + '45', alignItems: 'center', justifyContent: 'center' }} onPress={onInvite} activeOpacity={0.8}>
           <Ionicons name="person-add-outline" size={15} color={colors.accent} />
@@ -381,6 +358,15 @@ export default function HomeScreen() {
                 </View>
               )}
             </>
+          )}
+
+          {activeTab === 'amigos' && (
+            <View style={{ paddingTop: 16 }}>
+              <FriendActivityFeed
+                hasFollowing={followedIds.size > 0}
+                onFindPlayers={() => router.push('/(tabs)/mapas')}
+              />
+            </View>
           )}
 
           {activeTab === 'siguiendo' && (

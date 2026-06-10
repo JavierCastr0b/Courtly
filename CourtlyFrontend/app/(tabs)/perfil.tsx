@@ -15,6 +15,7 @@ import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
 import { Equipment, Match } from '@/src/types';
 import { notificationsApi } from '@/src/api/notifications';
+import { MatchHistorySection } from '@/src/components/MatchHistorySection';
 
 function fmtDate(s: string) {
   return new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
@@ -230,7 +231,7 @@ export default function PerfilScreen() {
     ]).then(([st, eq, mx, notif]) => {
       setStats(st);
       setEquipment(eq);
-      setMatches(mx.slice(0, 6));
+      setMatches(mx);
       setUnreadCount(notif.count);
     }).catch(() => {});
   }, [user?.id]));
@@ -396,47 +397,7 @@ export default function PerfilScreen() {
           </View>
         </View>
 
-        {matches.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>Partidos recientes</Text>
-            <View style={[styles.card, { marginTop: 10 }]}>
-              {matches.map((m, idx) => {
-                const won = m.resultRecorded && (m.winners ?? []).some(w => w.id === user.id);
-                const lost = m.resultRecorded && !(m.winners ?? []).some(w => w.id === user.id);
-                const inTeamA = (m.teamA ?? []).some(p => p.id === user.id);
-                const inTeamB = (m.teamB ?? []).some(p => p.id === user.id);
-                const hasTeams = (m.teamA ?? []).length > 0 || (m.teamB ?? []).length > 0;
-                let oppLabel: string;
-                if (hasTeams) {
-                  const myTeam = inTeamA ? (m.teamA ?? []) : inTeamB ? (m.teamB ?? []) : [];
-                  const theirTeam = inTeamA ? (m.teamB ?? []) : (m.teamA ?? []);
-                  const myNames = myTeam.map(p => p.name.split(' ')[0]).join(' / ') || 'Yo';
-                  const theirNames = theirTeam.map(p => p.name.split(' ')[0]).join(' / ') || '—';
-                  oppLabel = `${myNames} vs. ${theirNames}`;
-                } else {
-                  const opps = (m.participants ?? []).filter(p => p.id !== user.id);
-                  oppLabel = opps.length > 0
-                    ? 'vs. ' + opps.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ')
-                    : 'Partido';
-                }
-                return (
-                  <TouchableOpacity key={m.id} style={[styles.matchRow, idx < matches.length - 1 && styles.matchBorder]} onPress={() => router.push(`/match/${m.id}`)} activeOpacity={0.75}>
-                    <View style={[styles.resBadge, won ? styles.resW : lost ? styles.resL : styles.resN]}>
-                      <Text style={[styles.resTxt, won ? { color: colors.success } : lost ? { color: '#FF4B4B' } : { color: colors.textMuted }]}>
-                        {won ? 'W' : lost ? 'L' : '—'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.matchOpp} numberOfLines={1}>{oppLabel}</Text>
-                      <Text style={styles.matchMeta}>{levelDisplay[m.level]} · {fmtDate(m.date)}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
+        <MatchHistorySection allMatches={matches} userId={user.id} isOwn={true} />
 
         <View style={styles.section}>
           <View style={styles.secHead}>

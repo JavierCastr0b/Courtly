@@ -11,8 +11,10 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { InvitePlayersSheet } from '@/src/components/InvitePlayersSheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -198,12 +200,22 @@ function makeStyles(c: Colors) {
       borderColor: c.border,
     },
     noCourtsText: { color: c.textMuted, fontSize: 13, flex: 1, lineHeight: 19 },
+    sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'flex-end' },
+    sheetContainer: {
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      maxHeight: '80%',
+    },
+    sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 },
+    sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+    sheetTitle: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+    sheetCloseBtn: { padding: 6, borderRadius: 10 },
   });
 }
 
 export default function RegistrarScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<Mode>('match');
   const [courts, setCourts] = useState<Court[]>([]);
@@ -219,6 +231,9 @@ export default function RegistrarScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingCourts, setLoadingCourts] = useState(true);
   const [customLocation, setCustomLocation] = useState('');
+  const [showCourtSheet, setShowCourtSheet] = useState(false);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setLoadingCourts(true);
@@ -272,7 +287,8 @@ export default function RegistrarScreen() {
           description: description || undefined,
         });
         Alert.alert('¡Partido publicado!', 'Tu partido ya es visible para otros jugadores.', [
-          { text: 'OK', onPress: () => { setSelectedCourt(null); setDescription(''); } },
+          { text: 'Ahora no', style: 'cancel', onPress: () => { setSelectedCourt(null); setDescription(''); } },
+          { text: 'Invitar jugadores', onPress: () => { setSelectedCourt(null); setDescription(''); setInvitedIds(new Set()); setShowInviteSheet(true); } },
         ]);
       } else {
         const postLocation = selectedCourt === '__otros__'
@@ -333,48 +349,38 @@ export default function RegistrarScreen() {
                   <ActivityIndicator color={colors.primary} />
                   <Text style={styles.courtLoaderText}>Cargando canchas...</Text>
                 </View>
-              ) : courts.length === 0 ? (
-                <View style={styles.noCourtsBox}>
-                  <Ionicons name="alert-circle-outline" size={18} color={colors.textMuted} />
-                  <Text style={styles.noCourtsText}>No hay canchas registradas. Pide al administrador que agregue canchas para poder crear partidos.</Text>
-                </View>
               ) : (
-                courts.map((c) => (
-                  <TouchableOpacity
-                    key={c.id}
-                    onPress={() => { setSelectedCourt(c.id); setCustomLocation(''); }}
-                    style={[styles.courtItem, selectedCourt === c.id && styles.courtItemSelected]}
-                    activeOpacity={0.75}
-                  >
-                    <View style={styles.courtIcon}>
-                      <Ionicons name="tennisball-outline" size={18} color={selectedCourt === c.id ? colors.primary : colors.textSecondary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.courtName, selectedCourt === c.id && { color: colors.primary }]}>{c.name}</Text>
-                      <Text style={styles.courtMeta}>{c.address}</Text>
-                    </View>
-                    {selectedCourt === c.id && (
-                      <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))
+                <TouchableOpacity
+                  onPress={() => setShowCourtSheet(true)}
+                  style={[styles.courtItem, !!selectedCourt && styles.courtItemSelected]}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.courtIcon}>
+                    <Ionicons
+                      name={selectedCourt === '__otros__' ? 'location-outline' : 'tennisball-outline'}
+                      size={18}
+                      color={selectedCourt ? colors.primary : colors.textSecondary}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.courtName, selectedCourt ? { color: colors.primary } : { color: colors.textMuted }]}>
+                      {selectedCourt === '__otros__'
+                        ? 'Otros'
+                        : selectedCourt
+                          ? courts.find(c => c.id === selectedCourt)?.name ?? 'Cancha seleccionada'
+                          : 'Seleccionar cancha'}
+                    </Text>
+                    <Text style={styles.courtMeta}>
+                      {selectedCourt === '__otros__'
+                        ? 'Ingresa la dirección manualmente'
+                        : selectedCourt
+                          ? courts.find(c => c.id === selectedCourt)?.address ?? ''
+                          : 'Toca para elegir'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={18} color={selectedCourt ? colors.primary : colors.textMuted} />
+                </TouchableOpacity>
               )}
-              <TouchableOpacity
-                onPress={() => setSelectedCourt('__otros__')}
-                style={[styles.courtItem, selectedCourt === '__otros__' && styles.courtItemSelected]}
-                activeOpacity={0.75}
-              >
-                <View style={styles.courtIcon}>
-                  <Ionicons name="location-outline" size={18} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.courtName, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
-                  <Text style={styles.courtMeta}>Ingresa la dirección manualmente</Text>
-                </View>
-                {selectedCourt === '__otros__' && (
-                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                )}
-              </TouchableOpacity>
               {selectedCourt === '__otros__' && (
                 <TextInput
                   style={styles.textInput}
@@ -576,6 +582,83 @@ export default function RegistrarScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Court picker bottom sheet */}
+      <Modal
+        visible={showCourtSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCourtSheet(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCourtSheet(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.sheetContainer, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}
+          >
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Seleccionar cancha</Text>
+              <TouchableOpacity
+                onPress={() => setShowCourtSheet(false)}
+                style={[styles.sheetCloseBtn, { backgroundColor: colors.secondary }]}
+              >
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+              {courts.length === 0 ? (
+                <View style={styles.noCourtsBox}>
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.textMuted} />
+                  <Text style={styles.noCourtsText}>No hay canchas registradas. Pide al administrador que agregue canchas.</Text>
+                </View>
+              ) : (
+                courts.map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => { setSelectedCourt(c.id); setCustomLocation(''); setShowCourtSheet(false); }}
+                    style={[styles.courtItem, selectedCourt === c.id && styles.courtItemSelected]}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.courtIcon}>
+                      <Ionicons name="tennisball-outline" size={18} color={selectedCourt === c.id ? colors.primary : colors.textSecondary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.courtName, selectedCourt === c.id && { color: colors.primary }]}>{c.name}</Text>
+                      <Text style={styles.courtMeta}>{c.address}</Text>
+                    </View>
+                    {selectedCourt === c.id && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))
+              )}
+              <TouchableOpacity
+                onPress={() => { setSelectedCourt('__otros__'); setShowCourtSheet(false); }}
+                style={[styles.courtItem, selectedCourt === '__otros__' && styles.courtItemSelected]}
+                activeOpacity={0.75}
+              >
+                <View style={styles.courtIcon}>
+                  <Ionicons name="location-outline" size={18} color={selectedCourt === '__otros__' ? colors.primary : colors.textSecondary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.courtName, selectedCourt === '__otros__' && { color: colors.primary }]}>Otros</Text>
+                  <Text style={styles.courtMeta}>Ingresa la dirección manualmente</Text>
+                </View>
+                {selectedCourt === '__otros__' && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+              </TouchableOpacity>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <InvitePlayersSheet
+        visible={showInviteSheet}
+        invitedIds={invitedIds}
+        onInvite={(id) => setInvitedIds(prev => new Set([...prev, id]))}
+        onClose={() => setShowInviteSheet(false)}
+      />
     </SafeAreaView>
   );
 }

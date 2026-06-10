@@ -18,6 +18,9 @@ import { Avatar } from '@/src/components/Avatar';
 import { Tag } from '@/src/components/Tag';
 import { Button } from '@/src/components/Button';
 import ScorecardCard from '@/src/components/ScorecardCard';
+import { InvitePlayersSheet, MOCK_CANDIDATES } from '@/src/components/InvitePlayersSheet';
+import { PlayerRatingModal } from '@/src/components/PlayerRatingModal';
+import { hasRatedMatch } from '@/src/utils/ratingUtils';
 
 const isDoubles = (m: Match) =>
   (m.matchType ?? '').toUpperCase().includes('DOBLES') ||
@@ -208,6 +211,23 @@ function makeStyles(c: Colors) {
     },
     chatCardTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
     chatCardSub: { color: c.textSecondary, fontSize: 12, marginTop: 1 },
+    inviteBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      marginHorizontal: 20, marginBottom: 10,
+      backgroundColor: c.primary + '12', borderRadius: 12,
+      borderWidth: 1, borderColor: c.primary + '40', paddingVertical: 12,
+    },
+    inviteBtnText: { color: c.primary, fontSize: 15, fontWeight: '700' },
+    inviteCard: {
+      marginHorizontal: 20, backgroundColor: c.cardBg, borderRadius: 14,
+      borderWidth: 1, borderColor: c.border, padding: 14, marginBottom: 10,
+    },
+    inviteCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    inviteCountPill: { backgroundColor: c.primary + '18', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 2 },
+    inviteCountText: { color: c.primary, fontSize: 12, fontWeight: '700' },
+    inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+    inviteName: { color: c.textPrimary, fontSize: 14, flex: 1 },
+    inviteStatus: { color: c.textMuted, fontSize: 12 },
     finishedBanner: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       marginHorizontal: 20, marginTop: 6, marginBottom: 10,
@@ -216,6 +236,20 @@ function makeStyles(c: Colors) {
       paddingVertical: 14,
     },
     finishedText: { color: c.textMuted, fontSize: 14, fontWeight: '600' },
+    rateBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      marginHorizontal: 20, marginBottom: 10, marginTop: 4,
+      backgroundColor: '#FFB80012', borderRadius: 12,
+      borderWidth: 1, borderColor: '#FFB80040', paddingVertical: 12,
+    },
+    rateBtnText: { color: '#FFB800', fontSize: 15, fontWeight: '700' },
+    ratedBanner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+      marginHorizontal: 20, marginBottom: 10, marginTop: 4,
+      backgroundColor: c.success + '10', borderRadius: 12,
+      borderWidth: 1, borderColor: c.success + '30', paddingVertical: 10,
+    },
+    ratedBannerText: { color: c.success, fontSize: 13, fontWeight: '600' },
     joinErrorBox: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       marginHorizontal: 20, marginTop: 6,
@@ -312,6 +346,10 @@ export default function MatchDetailScreen() {
   const [recording, setRecording] = useState(false);
 
   const [showScorecard, setShowScorecard] = useState(false);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rated, setRated] = useState(false);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
   const [lastSets, setLastSets] = useState<MatchSet[]>([]);
   const [lastWinner, setLastWinner] = useState<'A' | 'B' | null>(null);
   const scorecardRef = useRef<View>(null);
@@ -319,10 +357,10 @@ export default function MatchDetailScreen() {
 
   useEffect(() => {
     matchesApi.getById(id)
-      .then(setMatch)
+      .then(m => { setMatch(m); if (me?.id) setRated(hasRatedMatch(m.id, me.id)); })
       .catch(() => Alert.alert('Error', 'No se pudo cargar el partido.'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, me?.id]);
 
   const isParticipant = match?.participants?.some(p => p.id === me?.id) ?? false;
   const isOrganizer = match?.organizer?.id === me?.id;
@@ -617,6 +655,40 @@ export default function MatchDetailScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
+          {/* Invitations summary */}
+          {(isOrganizer || isParticipant) && invitedIds.size > 0 && (
+            <View style={styles.inviteCard}>
+              <View style={styles.inviteCardHeader}>
+                <Text style={styles.sectionTitle}>Invitaciones enviadas</Text>
+                <View style={styles.inviteCountPill}>
+                  <Text style={styles.inviteCountText}>{invitedIds.size}</Text>
+                </View>
+              </View>
+              {Array.from(invitedIds).map(pid => {
+                const player = MOCK_CANDIDATES.find(c => c.id === pid);
+                if (!player) return null;
+                return (
+                  <View key={pid} style={styles.inviteRow}>
+                    <Avatar name={player.name} size={28} />
+                    <Text style={styles.inviteName}>{player.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+                      <Text style={styles.inviteStatus}>Pendiente</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Invite button */}
+          {(isOrganizer || isParticipant) && !match.resultRecorded && (
+            <TouchableOpacity style={styles.inviteBtn} onPress={() => setShowInviteSheet(true)} activeOpacity={0.8}>
+              <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+              <Text style={styles.inviteBtnText}>Invitar jugadores</Text>
+            </TouchableOpacity>
+          )}
+
           {doubles && isParticipant && !myTeam && !match.resultRecorded && (
             <TouchableOpacity style={styles.pickTeamBtn} onPress={() => setShowMyTeam(true)} activeOpacity={0.8}>
               <Ionicons name="people-outline" size={16} color={colors.primary} />
@@ -657,6 +729,25 @@ export default function MatchDetailScreen() {
                   </View>
                 )}
               </>
+            )
+          )}
+
+          {/* ── Rate players (post-match) ── */}
+          {match.resultRecorded && (isParticipant || isOrganizer) && (
+            rated ? (
+              <View style={styles.ratedBanner}>
+                <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+                <Text style={styles.ratedBannerText}>Ya calificaste este partido</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.rateBtn}
+                onPress={() => setShowRatingModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="star-outline" size={17} color="#FFB800" />
+                <Text style={styles.rateBtnText}>Calificar jugadores</Text>
+              </TouchableOpacity>
             )
           )}
 
@@ -786,6 +877,28 @@ export default function MatchDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Invite players sheet ── */}
+      <InvitePlayersSheet
+        visible={showInviteSheet}
+        invitedIds={invitedIds}
+        onInvite={id => setInvitedIds(prev => new Set([...prev, id]))}
+        onClose={() => setShowInviteSheet(false)}
+        matchLevel={match?.level}
+        spotsLeft={match?.spotsLeft}
+      />
+
+      {/* ── Player rating modal ── */}
+      {match && me && (
+        <PlayerRatingModal
+          visible={showRatingModal}
+          matchId={match.id}
+          players={(match.participants ?? []).filter(p => p.id !== me.id)}
+          reviewerId={me.id}
+          onClose={() => setShowRatingModal(false)}
+          onDone={() => { setRated(true); setShowRatingModal(false); }}
+        />
+      )}
 
       {/* ── Finalize modal ── */}
       <Modal visible={showFinalize} transparent animationType="slide" onRequestClose={() => setShowFinalize(false)}>

@@ -14,6 +14,8 @@ import { usersApi } from '@/src/api/users';
 import { useAuth } from '@/src/context/AuthContext';
 import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
+import { getRatingSummary, BADGE_CONFIG } from '@/src/utils/ratingUtils';
+import { MatchHistorySection } from '@/src/components/MatchHistorySection';
 
 function fmtDate(s: string) {
   return new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
@@ -113,6 +115,32 @@ function makeStyles(c: Colors) {
       flexDirection: 'row', alignItems: 'center', gap: 5,
       borderColor: c.primary + '40', backgroundColor: c.primary + '10',
     },
+    // Rating summary section
+    ratingCard: {
+      marginHorizontal: 20, marginBottom: 12,
+      backgroundColor: c.cardBg, borderRadius: 16,
+      borderWidth: 1, borderColor: c.border, padding: 16,
+    },
+    ratingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    ratingTitle: { color: c.textPrimary, fontSize: 14, fontWeight: '700' },
+    ratingOverall: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    ratingScore: { color: '#FFB800', fontSize: 22, fontWeight: '800' },
+    ratingCount: { color: c.textMuted, fontSize: 12, marginTop: 2 },
+    ratingBarRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 7 },
+    ratingBarLabel: { color: c.textSecondary, fontSize: 12, width: 76 },
+    ratingBar: { flex: 1, height: 5, borderRadius: 3, backgroundColor: c.border, overflow: 'hidden' },
+    ratingBarFill: { height: 5, borderRadius: 3 },
+    ratingBarVal: { color: c.textSecondary, fontSize: 12, fontWeight: '600', width: 28, textAlign: 'right' },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    badge: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderRadius: 20, borderWidth: 1,
+    },
+    badgeText: { fontSize: 12, fontWeight: '600' },
+    wpaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+    wpaText: { color: c.textMuted, fontSize: 12 },
+
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalSheet: {
       backgroundColor: c.background,
@@ -161,7 +189,7 @@ export default function ProfileScreen() {
       setStats(st);
       setFollowed(following.includes(id));
       setEquipment(eq);
-      setMatches(mx.slice(0, 6));
+      setMatches(mx);
       setMyStars(rec.stars);
     }).catch(() => Alert.alert('Error', 'No se pudo cargar el perfil.'))
       .finally(() => setLoading(false));
@@ -301,6 +329,65 @@ export default function ProfileScreen() {
           <StatBox value={profile.rating != null ? `★ ${profile.rating.toFixed(1)}` : '—'} label="RATING" accent={colors.primary} />
         </View>
 
+        {/* ── Rating summary ── */}
+        {(() => {
+          const rs = getRatingSummary(profile.id, profile.rating);
+          if (rs.totalRatings === 0) return null;
+          return (
+            <View style={styles.ratingCard}>
+              <View style={styles.ratingHeader}>
+                <Text style={styles.ratingTitle}>Reputación</Text>
+                <View style={styles.ratingOverall}>
+                  <Ionicons name="star" size={18} color="#FFB800" />
+                  <Text style={styles.ratingScore}>{rs.overallRating.toFixed(1)}</Text>
+                  <Text style={styles.ratingCount}>({rs.totalRatings} val.)</Text>
+                </View>
+              </View>
+
+              {[
+                { label: 'Puntualidad', value: rs.punctualityAvg },
+                { label: 'Nivel real',  value: rs.skillAvg },
+                { label: 'Vibra',       value: rs.vibeAvg },
+              ].map(({ label, value }) => (
+                <View key={label} style={styles.ratingBarRow}>
+                  <Text style={styles.ratingBarLabel}>{label}</Text>
+                  <View style={styles.ratingBar}>
+                    <View style={[styles.ratingBarFill, {
+                      width: `${(value / 5) * 100}%` as any,
+                      backgroundColor: value >= 4.5 ? colors.success : value >= 3.5 ? colors.primary : colors.warning,
+                    }]} />
+                  </View>
+                  <Text style={styles.ratingBarVal}>{value.toFixed(1)}</Text>
+                </View>
+              ))}
+
+              {rs.wouldPlayAgainPct > 0 && (
+                <View style={styles.wpaRow}>
+                  <Ionicons name="thumbs-up-outline" size={13} color={colors.success} />
+                  <Text style={styles.wpaText}>
+                    <Text style={{ color: colors.success, fontWeight: '700' }}>{rs.wouldPlayAgainPct}%</Text>
+                    {' '}volvería a jugar con este jugador
+                  </Text>
+                </View>
+              )}
+
+              {rs.badges.length > 0 && (
+                <View style={styles.badgeRow}>
+                  {rs.badges.map(key => {
+                    const cfg = BADGE_CONFIG[key];
+                    return (
+                      <View key={key} style={[styles.badge, { borderColor: colors.primary + '40', backgroundColor: colors.primary + '0D' }]}>
+                        <Ionicons name={cfg.icon as any} size={12} color={colors.primary} />
+                        <Text style={[styles.badgeText, { color: colors.primary }]}>{cfg.label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })()}
+
         <View style={styles.followCard}>
           <TouchableOpacity
             style={styles.followItem}
@@ -336,47 +423,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {matches.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>Partidos recientes</Text>
-            <View style={[styles.card, { marginTop: 10 }]}>
-              {matches.map((m, idx) => {
-                const won = m.resultRecorded && (m.winners ?? []).some(w => w.id === profile.id);
-                const lost = m.resultRecorded && !(m.winners ?? []).some(w => w.id === profile.id);
-                const inTeamA = (m.teamA ?? []).some(p => p.id === profile.id);
-                const inTeamB = (m.teamB ?? []).some(p => p.id === profile.id);
-                const hasTeams = (m.teamA ?? []).length > 0 || (m.teamB ?? []).length > 0;
-                let oppLabel: string;
-                if (hasTeams) {
-                  const myTeam = inTeamA ? (m.teamA ?? []) : inTeamB ? (m.teamB ?? []) : [];
-                  const theirTeam = inTeamA ? (m.teamB ?? []) : (m.teamA ?? []);
-                  const myNames = myTeam.map(p => p.name.split(' ')[0]).join(' / ') || profile.name.split(' ')[0];
-                  const theirNames = theirTeam.map(p => p.name.split(' ')[0]).join(' / ') || '—';
-                  oppLabel = `${myNames} vs. ${theirNames}`;
-                } else {
-                  const opps = m.participants.filter(p => p.id !== profile.id);
-                  oppLabel = opps.length > 0
-                    ? 'vs. ' + opps.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ')
-                    : 'Partido';
-                }
-                return (
-                  <TouchableOpacity key={m.id} style={[styles.matchRow, idx < matches.length - 1 && styles.matchBorder]} onPress={() => router.push(`/match/${m.id}`)} activeOpacity={0.75}>
-                    <View style={[styles.resBadge, won ? styles.resW : lost ? styles.resL : styles.resN]}>
-                      <Text style={[styles.resTxt, won ? { color: colors.success } : lost ? { color: '#FF4B4B' } : { color: colors.textMuted }]}>
-                        {won ? 'W' : lost ? 'L' : '—'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.matchOpp} numberOfLines={1}>{oppLabel}</Text>
-                      <Text style={styles.matchMeta}>{levelDisplay[m.level]} · {fmtDate(m.date)}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
+        <MatchHistorySection allMatches={matches} userId={profile.id} isOwn={isOwn} />
 
         {equipment.length > 0 && (
           <View style={styles.section}>
