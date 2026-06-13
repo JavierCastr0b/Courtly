@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,11 +71,22 @@ public class MatchController {
             Level.INICIACION, Level.PRINCIPIANTE, Level.INTERMEDIO, Level.AVANZADO, Level.PROFESIONAL);
 
     @PostMapping
-    public ResponseEntity<Match> create(@Valid @RequestBody CreateMatchRequest req,
+    public ResponseEntity<?> create(@Valid @RequestBody CreateMatchRequest req,
                                         @AuthenticationPrincipal User user) {
         var court = req.getCourtId() != null
                 ? courtRepository.findById(req.getCourtId()).orElse(null)
                 : null;
+
+        // Enforce 2-hour gap between same-day matches for the organizer
+        List<Match> sameDayForOrganizer = matchRepository.findActiveByParticipantAndDate(user.getId(), req.getDate());
+        for (Match existing : sameDayForOrganizer) {
+            long diffMinutes = Math.abs(ChronoUnit.MINUTES.between(req.getTime(), existing.getTime()));
+            if (diffMinutes < 120) {
+                String existingTimeStr = existing.getTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+                return ResponseEntity.status(409)
+                        .body(Map.of("error", "Tienes un partido a las " + existingTimeStr + " ese día. Debes dejar al menos 2 horas entre partidos."));
+            }
+        }
 
         Set<Level> requestedLevels = (req.getLevels() != null && !req.getLevels().isEmpty())
                 ? req.getLevels()
@@ -114,6 +127,18 @@ public class MatchController {
                 return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
         } else if (match.getLevel() != null && user.getLevel() != match.getLevel()) {
             return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
+        }
+
+        // Enforce 2-hour gap between same-day matches
+        List<Match> sameDayMatches = matchRepository.findActiveByParticipantAndDate(user.getId(), match.getDate());
+        for (Match existing : sameDayMatches) {
+            if (existing.getId().equals(id)) continue;
+            long diffMinutes = Math.abs(ChronoUnit.MINUTES.between(match.getTime(), existing.getTime()));
+            if (diffMinutes < 120) {
+                String existingTimeStr = existing.getTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+                return ResponseEntity.status(409)
+                        .body(Map.of("error", "Tienes un partido a las " + existingTimeStr + " ese día. Debes dejar al menos 2 horas entre partidos."));
+            }
         }
 
         match.getParticipants().add(user);

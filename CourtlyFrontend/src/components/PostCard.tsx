@@ -5,6 +5,7 @@ import { Post } from '../types';
 import { postsApi } from '../api/posts';
 import { colors } from '../theme/colors';
 import { Avatar } from './Avatar';
+import { timeAgo } from '../utils/time';
 
 interface PostCardProps {
   post: Post;
@@ -31,12 +32,12 @@ export function PostCard({ post, initialLiked = false }: PostCardProps) {
         <Avatar name={post.user.name} size={42} available={post.user.available} />
         <View style={styles.headerInfo}>
           <Text style={styles.userName}>{post.user.name}</Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{post.location}</Text>
-            <Text style={styles.dot}>·</Text>
-            <Text style={styles.metaText}>{post.createdAt}</Text>
-          </View>
+          {post.location ? (
+            <View style={styles.metaRow}>
+              <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
+              <Text style={styles.metaText}>{post.location}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -70,6 +71,8 @@ export function PostCard({ post, initialLiked = false }: PostCardProps) {
           </View>
         ) : null}
       </View>
+
+      <Text style={styles.timeAgo}>{timeAgo(post.createdAt)}</Text>
 
       <View style={styles.footer}>
         <TouchableOpacity onPress={handleLike} style={styles.likeBtn}>
@@ -118,10 +121,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
   },
-  dot: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
   title: {
     color: colors.textPrimary,
     fontSize: 15,
@@ -137,7 +136,7 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: '100%',
-    height: 200,
+    aspectRatio: 3 / 4,
     borderRadius: 10,
     marginBottom: 12,
   },
@@ -157,6 +156,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '500',
+  },
+  timeAgo: {
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: 'right',
+    marginBottom: 10,
   },
   footer: {
     flexDirection: 'row',

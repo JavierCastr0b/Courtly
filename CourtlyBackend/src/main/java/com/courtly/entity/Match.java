@@ -3,7 +3,9 @@ package com.courtly.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -43,6 +45,10 @@ public class Match {
 
     @Column(nullable = false)
     private LocalTime time;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)

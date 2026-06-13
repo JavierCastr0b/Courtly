@@ -57,6 +57,7 @@ export interface Match {
   organizer: User;
   date: string;
   time: string;
+  createdAt: string | null;
   level: Level;
   levels: Level[];
   totalSpots: number;

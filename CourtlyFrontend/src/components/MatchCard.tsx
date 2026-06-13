@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { Avatar } from './Avatar';
 import { Tag } from './Tag';
 import { Button } from './Button';
+import { timeAgo } from '../utils/time';
 
 interface MatchCardProps {
   match: Match;
@@ -37,8 +38,8 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
     try {
       await onJoin(match);
     } catch (e: any) {
-      setJoinError(e.message);
-      setTimeout(() => setJoinError(null), 4000);
+      setJoinError(e?.response?.data?.error ?? e.message ?? 'Error al unirse');
+      setTimeout(() => setJoinError(null), 5000);
     } finally {
       setJoining(false);
     }
@@ -104,10 +105,12 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.detailText}>{match.date} · {match.time}</Text>
         </View>
-        <View style={styles.detailItem}>
-          <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
-          <Text style={styles.detailText} numberOfLines={1}>{match.court?.address ?? match.customLocation ?? '—'}</Text>
-        </View>
+        {(match.court?.address || match.customLocation) ? (
+          <View style={styles.detailItem}>
+            <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
+            <Text style={styles.detailText} numberOfLines={1}>{match.court?.address ?? match.customLocation}</Text>
+          </View>
+        ) : null}
         <View style={styles.detailItem}>
           <Ionicons
             name="people-outline"
@@ -131,6 +134,10 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           />
         ))}
       </View>
+
+      {match.createdAt ? (
+        <Text style={styles.timeAgo}>{timeAgo(match.createdAt)}</Text>
+      ) : null}
 
       <Button
         label={match.resultRecorded ? 'Partido terminado' : isFull ? 'Partido completo' : !canJoin ? 'Ya estás inscrito' : 'Unirme al partido'}
@@ -197,6 +204,13 @@ const styles = StyleSheet.create({
   spotsBar: {
     flexDirection: 'row',
     gap: 6,
+    marginBottom: 8,
+  },
+  timeAgo: {
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: 'right',
+    marginBottom: 2,
   },
   spotDot: {
     height: 6,

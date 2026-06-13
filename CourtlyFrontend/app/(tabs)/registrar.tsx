@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Animated,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
@@ -40,8 +41,11 @@ const LEVELS: { value: Level; label: string; sub: string }[] = [
   { value: 'AVANZADO',     label: '2da',  sub: '2da categoría o superior' },
   { value: 'PROFESIONAL',  label: '1ra',  sub: 'Solo 1ra categoría' },
 ];
-const TIME_SLOTS = ['6:00 AM', '7:00 AM', '8:00 AM', '5:00 PM', '6:00 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
 const DATE_OPTIONS = ['Hoy', 'Mañana', 'Sábado', 'Domingo', 'Lunes'];
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
+const MINUTES = [0, 30];
+const DRUM_ITEM_H = 60;
+const DRUM_ABOVE = 2; // items visible above/below the selected one
 
 function resolveDate(label: string): string {
   const now = new Date();
@@ -60,15 +64,105 @@ function resolveDate(label: string): string {
   return fmt(now);
 }
 
-function resolveTime(label: string): string {
-  const match = label.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-  if (!match) return '19:00';
-  let h = parseInt(match[1], 10);
-  const m = match[2];
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && h !== 12) h += 12;
-  if (period === 'AM' && h === 12) h = 0;
-  return `${String(h).padStart(2, '0')}:${m}`;
+function TimeDrumRoll({
+  values,
+  selected,
+  onSelect,
+  fmt,
+}: {
+  values: number[];
+  selected: number;
+  onSelect: (v: number) => void;
+  fmt: (v: number) => string;
+}) {
+  const ref = React.useRef<any>(null);
+  const scrollY = React.useRef(new Animated.Value(0)).current;
+  const selectedIdx = values.indexOf(selected);
+
+  React.useEffect(() => {
+    const initialY = selectedIdx * DRUM_ITEM_H;
+    scrollY.setValue(initialY);
+    const timer = setTimeout(() => {
+      ref.current?.scrollTo({ y: initialY, animated: false });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleScrollEnd = (e: any) => {
+    const rawIdx = Math.round(e.nativeEvent.contentOffset.y / DRUM_ITEM_H);
+    const clamped = Math.max(0, Math.min(rawIdx, values.length - 1));
+    onSelect(values[clamped]);
+  };
+
+  const totalH = (DRUM_ABOVE * 2 + 1) * DRUM_ITEM_H;
+
+  return (
+    <View style={{ width: 96, height: totalH, overflow: 'hidden' }}>
+      {/* selection band */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: DRUM_ABOVE * DRUM_ITEM_H,
+          left: 0, right: 0,
+          height: DRUM_ITEM_H,
+          backgroundColor: 'rgba(255,255,255,0.07)',
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderColor: 'rgba(255,255,255,0.18)',
+          zIndex: 1,
+        }}
+      />
+      <Animated.ScrollView
+        ref={ref}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DRUM_ITEM_H}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingVertical: DRUM_ABOVE * DRUM_ITEM_H }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
+      >
+        {values.map((v, i) => {
+          const centerY = i * DRUM_ITEM_H;
+          const opacity = scrollY.interpolate({
+            inputRange: [
+              centerY - DRUM_ITEM_H * 2,
+              centerY - DRUM_ITEM_H,
+              centerY,
+              centerY + DRUM_ITEM_H,
+              centerY + DRUM_ITEM_H * 2,
+            ],
+            outputRange: [0.2, 0.55, 1, 0.55, 0.2],
+            extrapolate: 'clamp',
+          });
+          const scale = scrollY.interpolate({
+            inputRange: [
+              centerY - DRUM_ITEM_H,
+              centerY,
+              centerY + DRUM_ITEM_H,
+            ],
+            outputRange: [0.72, 1, 0.72],
+            extrapolate: 'clamp',
+          });
+          return (
+            <Animated.View
+              key={v}
+              style={{ height: DRUM_ITEM_H, justifyContent: 'center', alignItems: 'center', opacity, transform: [{ scale }] }}
+            >
+              <Text style={{ fontSize: 30, fontWeight: '600', color: colors.textPrimary }}>
+                {fmt(v)}
+              </Text>
+            </Animated.View>
+          );
+        })}
+      </Animated.ScrollView>
+    </View>
+  );
 }
 
 export default function RegistrarScreen() {
@@ -79,7 +173,8 @@ export default function RegistrarScreen() {
   const [courtSearch, setCourtSearch] = useState('');
   const [showCourtPicker, setShowCourtPicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState('Hoy');
-  const [selectedTime, setSelectedTime] = useState('7:00 PM');
+  const [selectedHour, setSelectedHour] = useState(19);
+  const [selectedMinute, setSelectedMinute] = useState(0);
   const [matchType, setMatchType] = useState<MatchType>('DOBLES');
   const [players, setPlayers] = useState(3);
   const [description, setDescription] = useState('');
@@ -134,7 +229,7 @@ export default function RegistrarScreen() {
           courtId: isOtros ? undefined : selectedCourt!,
           customLocation: isOtros ? customLocation : undefined,
           date: resolveDate(selectedDate),
-          time: resolveTime(selectedTime),
+          time: `${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`,
           levels: Array.from(selectedLevels),
           totalSpots: players + 1,
           matchType,
@@ -156,8 +251,8 @@ export default function RegistrarScreen() {
           { text: 'OK', onPress: () => { setPostText(''); setSelectedCourt(null); setPostPhoto(null); } },
         ]);
       }
-    } catch {
-      Alert.alert('Error', 'No se pudo publicar. Intenta de nuevo.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo publicar. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -326,15 +421,21 @@ export default function RegistrarScreen() {
               </ScrollView>
 
               <Text style={styles.sectionLabel}>Hora</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
-                <View style={styles.pillRow}>
-                  {TIME_SLOTS.map((t) => (
-                    <TouchableOpacity key={t} onPress={() => setSelectedTime(t)} style={[styles.pill, selectedTime === t && styles.pillActive]}>
-                      <Text style={[styles.pillText, selectedTime === t && styles.pillTextActive]}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+              <View style={styles.drumRow}>
+                <TimeDrumRoll
+                  values={HOURS}
+                  selected={selectedHour}
+                  onSelect={setSelectedHour}
+                  fmt={(v) => String(v).padStart(2, '0')}
+                />
+                <Text style={styles.drumColon}>:</Text>
+                <TimeDrumRoll
+                  values={MINUTES}
+                  selected={selectedMinute}
+                  onSelect={setSelectedMinute}
+                  fmt={(v) => String(v).padStart(2, '0')}
+                />
+              </View>
 
               <Text style={styles.sectionLabel}>Categorías</Text>
               <View style={styles.levelList}>
@@ -432,7 +533,7 @@ export default function RegistrarScreen() {
                   </View>
                   <View style={styles.previewRow}>
                     <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
-                    <Text style={styles.previewText}>{selectedDate} · {selectedTime}</Text>
+                    <Text style={styles.previewText}>{selectedDate} · {String(selectedHour).padStart(2, '0')}:{String(selectedMinute).padStart(2, '0')}</Text>
                   </View>
                   <View style={styles.previewRow}>
                     <Ionicons name="people-outline" size={15} color={colors.textSecondary} />
@@ -599,6 +700,8 @@ const styles = StyleSheet.create({
   courtIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   courtName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   courtMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  drumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 20 },
+  drumColon: { color: colors.textSecondary, fontSize: 36, fontWeight: '200', marginBottom: 4 },
   pillScroll: { marginBottom: 18 },
   pillRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1.5, borderColor: 'transparent' },

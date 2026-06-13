@@ -23,6 +23,9 @@ public interface MatchRepository extends JpaRepository<Match, String> {
     @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.id = :userId ORDER BY m.date DESC")
     List<Match> findByParticipantId(@Param("userId") String userId);
 
+    @Query("SELECT m FROM Match m JOIN m.participants p WHERE p.id = :userId AND m.date = :date AND m.resultRecorded = false")
+    List<Match> findActiveByParticipantAndDate(@Param("userId") String userId, @Param("date") LocalDate date);
+
     @Query("""
         SELECT m FROM Match m
         WHERE m.resultRecorded = false

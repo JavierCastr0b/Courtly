@@ -53,13 +53,12 @@ export default function PartidosScreen() {
   }, [loadData]);
 
   const handleJoin = (match: Match) => {
-    matchesApi.join(match.id)
+    return matchesApi.join(match.id)
       .then(updated => {
         const patch = (prev: Match[]) => prev.map(m => m.id === match.id ? updated : m);
         setAllMatches(patch);
         setFriendMatches(patch);
-      })
-      .catch(() => {});
+      });
   };
 
   const currentMatches = activeTab === 'parati' ? allMatches : friendMatches;

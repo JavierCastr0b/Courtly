@@ -156,7 +156,7 @@ export default function MatchDetailScreen() {
     setJoining(true);
     matchesApi.join(match.id)
       .then(updated => setMatch(updated))
-      .catch(e => setJoinError(e.message))
+      .catch(e => setJoinError(e?.response?.data?.error ?? e.message))
       .finally(() => setJoining(false));
   };
 
@@ -168,7 +168,7 @@ export default function MatchDetailScreen() {
     setShowJoinModal(false);
     matchesApi.join(match.id, joinTeam ?? undefined, guestName.trim() || undefined)
       .then(updated => setMatch(updated))
-      .catch(e => setJoinError(e.message ?? 'Error al unirte'))
+      .catch(e => setJoinError(e?.response?.data?.error ?? e.message ?? 'Error al unirte'))
       .finally(() => setJoining(false));
   };
 
