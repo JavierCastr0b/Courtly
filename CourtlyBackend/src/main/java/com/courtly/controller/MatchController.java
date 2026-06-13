@@ -43,6 +43,21 @@ public class MatchController {
         return matchRepository.findByDateGreaterThanEqual(LocalDate.now(), PageRequest.of(0, Math.min(size, 100)));
     }
 
+    @GetMapping("/friends")
+    public List<Match> getFriendMatches(@AuthenticationPrincipal User user) {
+        List<User> friends = userRepository.findMutualFriends(user.getId());
+        if (friends.isEmpty()) return List.of();
+        List<String> friendIds = friends.stream().map(User::getId).toList();
+        return matchRepository.findActiveFriendMatches(friendIds, LocalDate.now());
+    }
+
+    @GetMapping("/following")
+    public List<Match> getFollowingMatches(@AuthenticationPrincipal User user) {
+        List<String> followingIds = userRepository.findFollowingIds(user.getId());
+        if (followingIds.isEmpty()) return List.of();
+        return matchRepository.findActiveFollowingMatches(followingIds, LocalDate.now());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Match> getById(@PathVariable String id) {
         return matchRepository.findById(id)
@@ -50,12 +65,24 @@ public class MatchController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    private static final List<Level> LEVEL_ORDER = List.of(
+            Level.INICIACION, Level.PRINCIPIANTE, Level.INTERMEDIO, Level.AVANZADO, Level.PROFESIONAL);
+
     @PostMapping
     public ResponseEntity<Match> create(@Valid @RequestBody CreateMatchRequest req,
                                         @AuthenticationPrincipal User user) {
         var court = req.getCourtId() != null
                 ? courtRepository.findById(req.getCourtId()).orElse(null)
                 : null;
+
+        Set<Level> requestedLevels = (req.getLevels() != null && !req.getLevels().isEmpty())
+                ? req.getLevels()
+                : Set.of(Level.INICIACION);
+
+        Level primaryLevel = LEVEL_ORDER.stream()
+                .filter(requestedLevels::contains)
+                .findFirst()
+                .orElse(null);
 
         Match match = Match.builder()
                 .court(court)
@@ -65,11 +92,12 @@ public class MatchController {
                 .organizer(user)
                 .date(req.getDate())
                 .time(req.getTime())
-                .level(req.getLevel())
+                .level(primaryLevel)
                 .totalSpots(req.getTotalSpots())
                 .description(req.getDescription())
                 .build();
         match.getParticipants().add(user);
+        match.getLevels().addAll(requestedLevels);
         return ResponseEntity.ok(matchRepository.save(match));
     }
 
@@ -80,8 +108,13 @@ public class MatchController {
         Match match = matchRepository.findById(id).orElseThrow();
         if (match.getSpotsLeft() <= 0)
             return ResponseEntity.badRequest().body(Map.of("error", "No hay lugares disponibles"));
-        if (user.getLevel() != match.getLevel())
+        Set<Level> matchLevels = match.getLevels();
+        if (!matchLevels.isEmpty()) {
+            if (!matchLevels.contains(user.getLevel()))
+                return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
+        } else if (match.getLevel() != null && user.getLevel() != match.getLevel()) {
             return ResponseEntity.status(403).body(Map.of("error", "Este partido no está disponible para tu categoría actual"));
+        }
 
         match.getParticipants().add(user);
         String team = body != null ? body.get("team") : null;

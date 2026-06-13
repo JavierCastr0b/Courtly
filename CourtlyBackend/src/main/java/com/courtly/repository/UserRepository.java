@@ -30,7 +30,14 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("SELECT f FROM User u JOIN u.following f WHERE u.id = :userId")
     List<User> findFollowing(@Param("userId") String userId);
 
-    @Query("SELECT f FROM User u JOIN u.following f WHERE u.id = :userId AND f IN (SELECT f2 FROM User u2 JOIN u2.following f2 WHERE u2.id = f.id AND f2.id = :userId)")
+    @Query("""
+            SELECT f FROM User u JOIN u.following f
+            WHERE u.id = :userId
+            AND EXISTS (
+                SELECT 1 FROM User fUser JOIN fUser.following fol
+                WHERE fUser.id = f.id AND fol.id = :userId
+            )
+            """)
     List<User> findMutualFriends(@Param("userId") String userId);
 
     @Query("SELECT f.id FROM User u JOIN u.following f WHERE u.id = :userId")

@@ -293,7 +293,15 @@ export default function MatchDetailScreen() {
                 <Text style={st.organizerName}>{match.organizer.name}</Text>
               </View>
             </TouchableOpacity>
-            <Tag label={levelDisplay[match.level] ?? match.level} variant="level" level={match.level} />
+            {match.levels?.length >= 5 ? (
+              <Tag label="LIBRE" variant="level" />
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 130 }}>
+                {(match.levels?.length > 0 ? match.levels : [match.level]).map(l => (
+                  <Tag key={l} label={l} variant="level" level={l} />
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Info principal */}

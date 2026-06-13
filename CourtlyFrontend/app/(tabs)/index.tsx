@@ -8,33 +8,31 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, levelDisplay } from '@/src/theme/colors';
 import { useAuth } from '@/src/context/AuthContext';
-import { matchesApi } from '@/src/api/matches';
 import { postsApi } from '@/src/api/posts';
 import { usersApi } from '@/src/api/users';
 import { invitationsApi } from '@/src/api/invitations';
-import { Match, Post, User, Invitation } from '@/src/types';
+import { Post, User, Invitation } from '@/src/types';
 import { Avatar } from '@/src/components/Avatar';
-import { MatchCard } from '@/src/components/MatchCard';
 import { PostCard } from '@/src/components/PostCard';
 import { Button } from '@/src/components/Button';
 import { InviteModal } from '@/src/components/InviteModal';
 
-type Tab = 'recomendado' | 'siguiendo' | 'partidos';
+type Tab = 'parati' | 'amigos' | 'siguiendo';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'recomendado', label: 'Recomendado' },
+  { key: 'parati', label: 'Para ti' },
+  { key: 'amigos', label: 'Amigos' },
   { key: 'siguiendo', label: 'Siguiendo' },
-  { key: 'partidos', label: 'Partidos' },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<Tab>('recomendado');
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('parati');
   const [posts, setPosts] = useState<Post[]>([]);
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
@@ -44,20 +42,21 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [m, p, fp, u, inv, following, liked] = await Promise.all([
-      matchesApi.getAll().catch(() => [] as Match[]),
+    if (!user?.id) return;
+    const [p, fp, friends, u, inv, following, liked] = await Promise.all([
       postsApi.getFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
       postsApi.getFollowingFeed().catch(() => ({ content: [] as Post[], totalPages: 0, totalElements: 0, number: 0 })),
+      usersApi.getFriends(user.id).catch(() => [] as User[]),
       usersApi.search('').catch(() => [] as User[]),
       invitationsApi.getPending().catch(() => [] as Invitation[]),
       usersApi.getFollowing().catch(() => [] as string[]),
       postsApi.getLikedIds().catch(() => [] as string[]),
     ]);
-    setMatches(m);
-    setPosts(p.content.slice(0, 10));
-    setLikedIds(new Set(liked));
+    setPosts(p.content);
     setFollowingPosts(fp.content);
-    setSuggestions(u.filter(s => s.id !== user?.id).slice(0, 5));
+    setFriendIds(new Set(friends.map(f => f.id)));
+    setLikedIds(new Set(liked));
+    setSuggestions(u.filter(s => s.id !== user?.id && !following.includes(s.id)).slice(0, 5));
     setNotifCount(inv.length);
     setFollowedIds(new Set(following));
   }, [user?.id]);
@@ -79,6 +78,8 @@ export default function HomeScreen() {
     });
   };
 
+  const friendPosts = followingPosts.filter(p => friendIds.has(p.user.id));
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -98,7 +99,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Tab selector */}
       <View style={styles.tabBar}>
         {TABS.map(tab => (
           <TouchableOpacity
@@ -125,44 +125,13 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
-          {/* RECOMENDADO */}
-          {activeTab === 'recomendado' && (
+          {/* PARA TI */}
+          {activeTab === 'parati' && (
             <>
-              {matches.length > 0 && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.sectionTitleRow}>
-                      <View style={styles.sectionIcon}>
-                        <Ionicons name="flash" size={14} color={colors.ctaHighlight} />
-                      </View>
-                      <Text style={styles.sectionTitle}>Partidos sugeridos</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => router.push('/(tabs)/mapas')}>
-                      <Text style={styles.seeAll}>Ver todo</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                    {matches.slice(0, 5).map(match => (
-                      <MatchCard
-                        key={match.id}
-                        match={match}
-                        compact
-                        onJoin={m => matchesApi.join(m.id)
-                          .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
-                        }
-                      />
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
               {suggestions.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>A quién seguir</Text>
-                    <TouchableOpacity onPress={() => router.push('/(tabs)/grupos')}>
-                      <Text style={styles.seeAll}>Ver todo</Text>
-                    </TouchableOpacity>
                   </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
                     {suggestions.map(u => (
@@ -183,7 +152,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {posts.length > 0 && (
+              {posts.length > 0 ? (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Publicaciones</Text>
@@ -192,13 +161,30 @@ export default function HomeScreen() {
                     <PostCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} />
                   ))}
                 </View>
-              )}
-
-              {matches.length === 0 && posts.length === 0 && (
+              ) : (
                 <View style={styles.empty}>
-                  <Ionicons name="tennisball-outline" size={48} color={colors.textMuted} />
-                  <Text style={styles.emptyTitle}>Todo listo</Text>
-                  <Text style={styles.emptyText}>Crea un partido o una publicación para empezar.</Text>
+                  <Ionicons name="newspaper-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>Sin publicaciones</Text>
+                  <Text style={styles.emptyText}>Sé el primero en publicar algo.</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {/* AMIGOS */}
+          {activeTab === 'amigos' && (
+            <>
+              {friendPosts.length > 0 ? (
+                <View style={styles.section}>
+                  {friendPosts.map(post => (
+                    <PostCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>Sin publicaciones de amigos</Text>
+                  <Text style={styles.emptyText}>Los usuarios que te sigan de vuelta aparecerán aquí.</Text>
                 </View>
               )}
             </>
@@ -215,35 +201,9 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.empty}>
-                  <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                  <Ionicons name="person-add-outline" size={48} color={colors.textMuted} />
                   <Text style={styles.emptyTitle}>Sin actividad</Text>
                   <Text style={styles.emptyText}>Sigue a jugadores para ver sus publicaciones aquí.</Text>
-                </View>
-              )}
-            </>
-          )}
-
-          {/* PARTIDOS */}
-          {activeTab === 'partidos' && (
-            <>
-              {matches.length > 0 ? (
-                <View style={[styles.section, { paddingHorizontal: 18 }]}>
-                  {matches.map(match => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      onJoin={m => matchesApi.join(m.id)
-                        .then(updated => setMatches(prev => prev.map(x => x.id === m.id ? updated : x)))
-                        .catch(() => {})
-                      }
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.empty}>
-                  <Ionicons name="tennisball-outline" size={48} color={colors.textMuted} />
-                  <Text style={styles.emptyTitle}>Sin partidos</Text>
-                  <Text style={styles.emptyText}>No hay partidos disponibles por ahora.</Text>
                 </View>
               )}
             </>
@@ -296,29 +256,19 @@ const styles = StyleSheet.create({
     borderRadius: 20, backgroundColor: colors.secondary,
     borderWidth: 1, borderColor: colors.border,
   },
-  tabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   tabLabelActive: { color: '#fff' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
-  section: { marginTop: 22 },
+  section: { marginTop: 20, paddingHorizontal: 16 },
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 18, marginBottom: 14,
-  },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectionIcon: {
-    width: 22, height: 22, borderRadius: 6,
-    backgroundColor: colors.ctaHighlight + '22',
-    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 14,
   },
   sectionTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  seeAll: { color: colors.ctaHighlight, fontSize: 13, fontWeight: '600' },
-  horizontalScroll: { paddingHorizontal: 18, paddingBottom: 4 },
+  horizontalScroll: { paddingBottom: 4 },
   followCard: {
     backgroundColor: colors.cardBg, borderRadius: 14, padding: 14,
     alignItems: 'center', width: 120, marginRight: 12,

@@ -58,6 +58,7 @@ export interface Match {
   date: string;
   time: string;
   level: Level;
+  levels: Level[];
   totalSpots: number;
   spotsLeft: number;
   description: string | null;

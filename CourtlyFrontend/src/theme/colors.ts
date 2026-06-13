@@ -24,17 +24,19 @@ export const colors = {
 export type LevelType = 'Iniciación' | 'Intermedio' | 'Avanzado' | 'Profesional';
 
 export const levelColor: Record<string, string> = {
-  INICIACION:  '#52D68A',
+  LIBRE:        '#52D68A',
+  INICIACION:   '#52D68A',
   PRINCIPIANTE: colors.beginner,
-  INTERMEDIO: colors.intermediate,
-  AVANZADO: colors.advanced,
-  PROFESIONAL: '#9B59B6',
+  INTERMEDIO:   colors.intermediate,
+  AVANZADO:     colors.advanced,
+  PROFESIONAL:  '#9B59B6',
 };
 
 export const levelDisplay: Record<string, string> = {
-  INICIACION:  '5ta',
+  LIBRE:        'Libre',
+  INICIACION:   '5ta',
   PRINCIPIANTE: '4ta',
-  INTERMEDIO: '3ra',
-  AVANZADO: '2da',
-  PROFESIONAL: '1ra',
+  INTERMEDIO:   '3ra',
+  AVANZADO:     '2da',
+  PROFESIONAL:  '1ra',
 };

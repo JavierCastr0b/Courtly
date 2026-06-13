@@ -83,6 +83,7 @@ export default function PerfilScreen() {
   const [eqBrand, setEqBrand] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showAllFinished, setShowAllFinished] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (!user) return;
@@ -94,7 +95,7 @@ export default function PerfilScreen() {
     ]).then(([st, eq, mx, notif]) => {
       setStats(st);
       setEquipment(eq);
-      setMatches(mx.slice(0, 6));
+      setMatches(mx);
       setUnreadCount(notif.count);
     }).catch(() => {});
   }, [user?.id]));
@@ -105,6 +106,56 @@ export default function PerfilScreen() {
   const lvlCol = levelColor[user.level];
   const lvlDsp = levelDisplay[user.level];
   const pala = equipment.find(e => e.type === 'PALA');
+
+  const activeMatches = matches.filter(m => !m.resultRecorded);
+  const finishedMatches = matches.filter(m => m.resultRecorded);
+
+  const renderMatchRow = (m: Match, idx: number, total: number, overridePress?: () => void) => {
+    const won = m.resultRecorded && (m.winners ?? []).some(w => w.id === user.id);
+    const inTeamA = (m.teamA ?? []).some(p => p.id === user.id);
+    const inTeamB = (m.teamB ?? []).some(p => p.id === user.id);
+    const hasTeams = (m.teamA ?? []).length > 0 || (m.teamB ?? []).length > 0;
+    let oppLabel: string;
+    if (hasTeams) {
+      const myTeam = inTeamA ? (m.teamA ?? []) : inTeamB ? (m.teamB ?? []) : [];
+      const theirTeam = inTeamA ? (m.teamB ?? []) : (m.teamA ?? []);
+      oppLabel = `${myTeam.map(p => p.name.split(' ')[0]).join(' / ') || 'Yo'} vs. ${theirTeam.map(p => p.name.split(' ')[0]).join(' / ') || '—'}`;
+    } else {
+      const opps = (m.participants ?? []).filter(p => p.id !== user.id);
+      oppLabel = opps.length > 0
+        ? 'vs. ' + opps.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ')
+        : m.court?.name ?? m.customLocation ?? 'Partido';
+    }
+    const metaLine = m.resultRecorded
+      ? [m.score, fmtDate(m.date)].filter(Boolean).join(' · ')
+      : [(m.court?.name ?? m.customLocation), fmtDate(m.date)].filter(Boolean).join(' · ');
+
+    return (
+      <TouchableOpacity
+        key={m.id}
+        style={[s.matchRow, idx < total - 1 && s.matchBorder]}
+        onPress={overridePress ?? (() => router.push(`/match/${m.id}`))}
+        activeOpacity={0.75}
+      >
+        {m.resultRecorded ? (
+          <View style={[s.resBadge, won ? s.resW : s.resL]}>
+            <Text style={[s.resTxt, { color: won ? colors.success : '#FF4B4B' }]}>
+              {won ? 'W' : 'L'}
+            </Text>
+          </View>
+        ) : (
+          <View style={[s.resBadge, s.resActive]}>
+            <Ionicons name="time-outline" size={16} color={colors.primary} />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={s.matchOpp} numberOfLines={1}>{oppLabel}</Text>
+          <Text style={s.matchMeta}>{metaLine}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+      </TouchableOpacity>
+    );
+  };
 
   const prefs = [
     user.preferredSide === 'REVES' ? 'Revés' : user.preferredSide === 'DRIVE' ? 'Drive' : null,
@@ -261,45 +312,29 @@ export default function PerfilScreen() {
           </View>
         </View>
 
-        {/* ── Partidos recientes ── */}
-        {matches.length > 0 && (
+        {/* ── Partidos Activos ── */}
+        {activeMatches.length > 0 && (
           <View style={s.section}>
-            <Text style={s.secTitle}>Partidos recientes</Text>
+            <Text style={s.secTitle}>Partidos Activos</Text>
             <View style={[s.card, { marginTop: 10 }]}>
-              {matches.map((m, idx) => {
-                const won = m.resultRecorded && (m.winners ?? []).some(w => w.id === user.id);
-                const lost = m.resultRecorded && !(m.winners ?? []).some(w => w.id === user.id);
-                const inTeamA = (m.teamA ?? []).some(p => p.id === user.id);
-                const inTeamB = (m.teamB ?? []).some(p => p.id === user.id);
-                const hasTeams = (m.teamA ?? []).length > 0 || (m.teamB ?? []).length > 0;
-                let oppLabel: string;
-                if (hasTeams) {
-                  const myTeam = inTeamA ? (m.teamA ?? []) : inTeamB ? (m.teamB ?? []) : [];
-                  const theirTeam = inTeamA ? (m.teamB ?? []) : (m.teamA ?? []);
-                  const myNames = myTeam.map(p => p.name.split(' ')[0]).join(' / ') || 'Yo';
-                  const theirNames = theirTeam.map(p => p.name.split(' ')[0]).join(' / ') || '—';
-                  oppLabel = `${myNames} vs. ${theirNames}`;
-                } else {
-                  const opps = (m.participants ?? []).filter(p => p.id !== user.id);
-                  oppLabel = opps.length > 0
-                    ? 'vs. ' + opps.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ')
-                    : 'Partido';
-                }
-                return (
-                  <TouchableOpacity key={m.id} style={[s.matchRow, idx < matches.length - 1 && s.matchBorder]} onPress={() => router.push(`/match/${m.id}`)} activeOpacity={0.75}>
-                    <View style={[s.resBadge, won ? s.resW : lost ? s.resL : s.resN]}>
-                      <Text style={[s.resTxt, won ? { color: colors.success } : lost ? { color: '#FF4B4B' } : { color: colors.textMuted }]}>
-                        {won ? 'W' : lost ? 'L' : '—'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.matchOpp} numberOfLines={1}>{oppLabel}</Text>
-                      <Text style={s.matchMeta}>{levelDisplay[m.level]} · {fmtDate(m.date)}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                );
-              })}
+              {activeMatches.map((m, idx) => renderMatchRow(m, idx, activeMatches.length))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Partidos Finalizados ── */}
+        {finishedMatches.length > 0 && (
+          <View style={s.section}>
+            <View style={s.secHead}>
+              <Text style={s.secTitle}>Partidos Finalizados</Text>
+              {finishedMatches.length > 5 && (
+                <TouchableOpacity onPress={() => setShowAllFinished(true)}>
+                  <Text style={s.addBtnText}>Ver Todos</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={s.card}>
+              {finishedMatches.slice(0, 5).map((m, idx) => renderMatchRow(m, idx, Math.min(finishedMatches.length, 5)))}
             </View>
           </View>
         )}
@@ -370,6 +405,27 @@ export default function PerfilScreen() {
         )}
 
       </ScrollView>
+
+      {/* ── Modal: historial completo ── */}
+      <Modal visible={showAllFinished} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAllFinished(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={s.mHandle} />
+          <View style={s.mHeader}>
+            <Text style={s.mTitle}>Historial de partidos</Text>
+            <TouchableOpacity onPress={() => setShowAllFinished(false)}>
+              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+            <View style={s.card}>
+              {finishedMatches.map((m, idx) => renderMatchRow(m, idx, finishedMatches.length, () => {
+                setShowAllFinished(false);
+                router.push(`/match/${m.id}`);
+              }))}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* ── Modal: editar perfil ── */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>
@@ -587,6 +643,7 @@ const s = StyleSheet.create({
   resW: { backgroundColor: colors.success + '22' },
   resL: { backgroundColor: '#FF4B4B22' },
   resN: { backgroundColor: colors.border + '66' },
+  resActive: { backgroundColor: colors.primary + '18' },
   resTxt: { fontSize: 13, fontWeight: '800' },
   matchOpp: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   matchMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },

@@ -6,7 +6,7 @@ interface CreateMatchData {
   customLocation?: string;
   date: string;
   time: string;
-  level: Level;
+  levels: Level[];
   totalSpots: number;
   description?: string;
   matchType?: string;
@@ -18,6 +18,8 @@ export interface MatchSet { a: number; b: number; }
 export const matchesApi = {
   getAll: (params?: { courtId?: string; level?: Level; date?: string }) =>
     api.get<Match[]>('/matches', { params }).then(r => r.data),
+  getFriendMatches: () => api.get<Match[]>('/matches/friends').then(r => r.data),
+  getFollowingMatches: () => api.get<Match[]>('/matches/following').then(r => r.data),
   getById: (id: string) => api.get<Match>(`/matches/${id}`).then(r => r.data),
   create: (data: CreateMatchData) => api.post<Match>('/matches', data).then(r => r.data),
   join: (id: string, team?: 'A' | 'B', guestName?: string) =>

@@ -27,6 +27,8 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
   const isOrganizer = match.organizer?.id === me?.id;
   const isParticipant = match.participants?.some(p => p.id === me?.id) ?? false;
   const canJoin = !isOrganizer && !isParticipant && !isFull;
+  const matchLevels = match.levels?.length > 0 ? match.levels : [match.level];
+  const isLibre = matchLevels.length >= 5;
 
   const handleJoin = async () => {
     if (!canJoin || !onJoin) return;
@@ -47,7 +49,9 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
       <TouchableOpacity activeOpacity={0.8} style={styles.compactCard} onPress={() => router.push(`/match/${match.id}`)}>
         <View style={styles.compactHeader}>
           <Text style={styles.compactCourt} numberOfLines={1}>{match.court?.name ?? match.customLocation ?? '—'}</Text>
-          <Tag label={match.level} variant="level" level={match.level} />
+          {isLibre
+            ? <Tag label="LIBRE" variant="level" />
+            : <Tag label={matchLevels[0]} variant="level" level={matchLevels[0]} />}
         </View>
         <View style={styles.compactMeta}>
           <View style={styles.metaRow}>
@@ -86,7 +90,13 @@ export function MatchCard({ match, onJoin, compact = false }: MatchCardProps) {
           <Text style={styles.organizerName}>{match.organizer.name}</Text>
           <Text style={styles.courtName} numberOfLines={1}>{match.court?.name ?? match.customLocation ?? '—'}</Text>
         </View>
-        <Tag label={match.level} variant="level" level={match.level} />
+        {isLibre ? (
+          <Tag label="LIBRE" variant="level" />
+        ) : (
+          <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 130 }}>
+            {matchLevels.map(l => <Tag key={l} label={l} variant="level" level={l} />)}
+          </View>
+        )}
       </View>
 
       <View style={styles.details}>

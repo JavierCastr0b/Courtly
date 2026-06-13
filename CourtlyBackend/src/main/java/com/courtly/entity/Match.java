@@ -45,8 +45,16 @@ public class Match {
     private LocalTime time;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Level level;
+
+    @Builder.Default
+    @BatchSize(size = 25)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "match_levels", joinColumns = @JoinColumn(name = "match_id"))
+    @Column(name = "level")
+    private Set<Level> levels = new HashSet<>();
 
     @Column(nullable = false)
     private int totalSpots;

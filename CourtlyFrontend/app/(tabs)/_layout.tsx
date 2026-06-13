@@ -44,11 +44,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="mapas"
+        name="partidos"
         options={{
-          title: 'Mapas',
+          title: 'Partidos',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'tennisball' : 'tennisball-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -68,6 +68,15 @@ export default function TabLayout() {
           title: 'Tú',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="mapas"
+        options={{
+          title: 'Mapas',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color} />
           ),
         }}
       />

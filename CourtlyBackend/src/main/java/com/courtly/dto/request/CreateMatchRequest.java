@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Set;
 
 @Data
 public class CreateMatchRequest {
@@ -17,7 +18,7 @@ public class CreateMatchRequest {
     private String customLocation;
     @NotNull private LocalDate date;
     @NotNull private LocalTime time;
-    @NotNull private Level level;
+    private Set<Level> levels;
     @Min(2) @Max(5) private int totalSpots;
     private String description;
 }
